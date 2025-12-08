@@ -6,16 +6,38 @@ import {
   mobilityGrades,
   swellingOptions,
   radiographicFindings,
+  universalTeeth,
+  fdiTeeth,
+  toothTypeLabels,
 } from '../../data';
 
 export function ObjectiveSection() {
-  const { noteData, updateField } = useNote();
+  const { noteData, preferences, updateField, updateTooth } = useNote();
+
+  const teethOptions = preferences.toothNotation === 'universal' ? universalTeeth : fdiTeeth;
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
       <h2 className="text-lg font-semibold text-gray-800 mb-4">Objective</h2>
 
-      <h3 className="text-md font-medium text-gray-700 mt-2 mb-2">Vitality Tests</h3>
+      <h3 className="text-md font-medium text-gray-700 mt-2 mb-2">Tooth Information</h3>
+      <Dropdown
+        label="Tooth Number"
+        value={noteData.toothNumber}
+        options={teethOptions}
+        onChange={updateTooth}
+        placeholder="Select tooth..."
+        required
+      />
+
+      {noteData.toothNumber && (
+        <div className="mt-2 mb-4 p-2 bg-gray-50 rounded text-sm">
+          <span className="text-gray-600">Tooth Type: </span>
+          <span className="font-medium">{toothTypeLabels[noteData.toothType]}</span>
+        </div>
+      )}
+
+      <h3 className="text-md font-medium text-gray-700 mt-4 mb-2">Vitality Tests</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Dropdown
           label="Cold Test"

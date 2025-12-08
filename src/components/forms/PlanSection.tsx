@@ -61,7 +61,15 @@ export function PlanSection() {
 
   // Get MAF for a specific canal
   const getCanalMAF = (canal: string) => {
-    return noteData.canalMAFs.find((m) => m.canal === canal) || { canal, size: '', taper: '' };
+    return noteData.canalMAFs.find((m) => m.canal === canal) || {
+      canal,
+      fileSystem: '',
+      size: '',
+      taper: '',
+      obturationTechnique: '',
+      obturationMaterial: '',
+      obturationSealer: ''
+    };
   };
 
   return (
@@ -153,52 +161,114 @@ export function PlanSection() {
         placeholder="e.g., MB: 21mm, DB: 20mm, P: 22mm"
       />
 
-      {/* Instrumentation */}
-      <h3 className="text-md font-medium text-gray-700 mt-4 mb-2">Instrumentation</h3>
-      <Dropdown
-        label="File System"
-        value={noteData.instrumentationSystem}
-        options={instrumentationSystems}
-        onChange={(value) => updateField('instrumentationSystem', value)}
-        placeholder="Select file system..."
-      />
-
-      {/* Per-Canal MAF Selection */}
+      {/* Per-Canal Instrumentation Setup */}
       {selectedCanals.length > 0 && (
         <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            MAF / Final Size (per canal)
-          </label>
-          <div className="space-y-3">
+          <h3 className="text-md font-medium text-gray-700 mb-3">Instrumentation & Obturation (per canal)</h3>
+          <div className="space-y-4">
             {selectedCanals.map((canal) => {
               const maf = getCanalMAF(canal);
               return (
-                <div key={canal} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                  <span className="w-20 font-medium text-gray-700">{canal}:</span>
-                  <select
-                    value={maf.size}
-                    onChange={(e) => updateCanalMAF(canal, 'size', e.target.value)}
-                    className="flex-1 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Size...</option>
-                    {mafSizes.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={maf.taper}
-                    onChange={(e) => updateCanalMAF(canal, 'taper', e.target.value)}
-                    className="w-32 px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Taper...</option>
-                    {mafTapers.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                <div key={canal} className="p-3 bg-gray-50 rounded border border-gray-200">
+                  <div className="font-medium text-gray-700 mb-3">{canal}</div>
+
+                  {/* Instrumentation */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">File System</label>
+                      <select
+                        value={maf.fileSystem}
+                        onChange={(e) => updateCanalMAF(canal, 'fileSystem', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select...</option>
+                        {instrumentationSystems.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Size</label>
+                      <select
+                        value={maf.size}
+                        onChange={(e) => updateCanalMAF(canal, 'size', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select...</option>
+                        {mafSizes.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Taper</label>
+                      <select
+                        value={maf.taper}
+                        onChange={(e) => updateCanalMAF(canal, 'taper', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select...</option>
+                        {mafTapers.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Obturation */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Obturation Technique</label>
+                      <select
+                        value={maf.obturationTechnique}
+                        onChange={(e) => updateCanalMAF(canal, 'obturationTechnique', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select...</option>
+                        {obturationTechniques.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Material</label>
+                      <select
+                        value={maf.obturationMaterial}
+                        onChange={(e) => updateCanalMAF(canal, 'obturationMaterial', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select...</option>
+                        {obturationMaterials.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Sealer</label>
+                      <select
+                        value={maf.obturationSealer}
+                        onChange={(e) => updateCanalMAF(canal, 'obturationSealer', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select...</option>
+                        {obturationMaterials.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -222,24 +292,6 @@ export function PlanSection() {
         options={medicaments}
         onChange={(value) => updateField('medicament', value)}
         placeholder="Select medicament..."
-      />
-
-      {/* Obturation */}
-      <h3 className="text-md font-medium text-gray-700 mt-4 mb-2">Obturation</h3>
-      <Dropdown
-        label="Technique"
-        value={noteData.obturationTechnique}
-        options={obturationTechniques}
-        onChange={(value) => updateField('obturationTechnique', value)}
-        placeholder="Select technique..."
-      />
-
-      <CheckboxGroup
-        label="Materials"
-        options={obturationMaterials}
-        selectedValues={noteData.obturationMaterials}
-        onChange={(values) => updateField('obturationMaterials', values)}
-        columns={2}
       />
 
       {/* Restoration */}

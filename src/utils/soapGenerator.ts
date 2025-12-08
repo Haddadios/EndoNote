@@ -64,32 +64,11 @@ export function generateSOAPNote(data: NoteData): string {
 
   // === SUBJECTIVE ===
   lines.push('SUBJECTIVE:');
+  lines.push('');
 
-  let subjective = '';
-
-  // Chief complaints (now multi-select)
-  if (data.chiefComplaints.length > 0) {
-    const complaints = data.chiefComplaints.map((c) => {
-      if (c === 'other') return data.chiefComplaintCustom;
-      return getLabel(chiefComplaints, c);
-    });
-    subjective = `Patient presents with ${joinList(complaints.map((c) => c.toLowerCase()))}.`;
-  }
-
-  // Pain characteristics
-  if (data.painCharacteristics.length > 0) {
-    const chars = getLabels(painCharacteristics, data.painCharacteristics);
-    subjective += ` Reports ${joinList(chars.map((c) => c.toLowerCase()))} pain`;
-
-    if (data.painDuration) {
-      const duration = getLabel(painDurations, data.painDuration);
-      subjective += ` for ${duration.toLowerCase()}`;
-    }
-    subjective += '.';
-  } else if (data.painDuration && data.painDuration !== 'na') {
-    const duration = getLabel(painDurations, data.painDuration);
-    subjective += ` Duration: ${duration}.`;
-  }
+  // History subsection
+  lines.push('History:');
+  let history = '';
 
   // Vital signs
   const vitals: string[] = [];
@@ -103,16 +82,47 @@ export function generateSOAPNote(data: NoteData): string {
     vitals.push(`RR: ${data.respiratoryRate} breaths/min unlaboured`);
   }
   if (vitals.length > 0) {
-    subjective += ` ${vitals.join(', ')}.`;
+    history = vitals.join(', ') + '.';
   }
 
   // Medical history
   if (data.medicalHistoryAlerts.length > 0 && !data.medicalHistoryAlerts.includes('none')) {
     const alerts = getLabels(medicalHistoryAlerts, data.medicalHistoryAlerts);
-    subjective += ` Medical history: ${joinList(alerts)}.`;
+    history += ` Medical history: ${joinList(alerts)}.`;
   }
 
-  lines.push(subjective || 'No subjective findings reported.');
+  lines.push(history || 'No history reported.');
+  lines.push('');
+
+  // Chief Complaint subsection
+  lines.push('Chief Complaint:');
+  let chiefComplaint = '';
+
+  // Chief complaints (now multi-select)
+  if (data.chiefComplaints.length > 0) {
+    const complaints = data.chiefComplaints.map((c) => {
+      if (c === 'other') return data.chiefComplaintCustom;
+      return getLabel(chiefComplaints, c);
+    });
+    chiefComplaint = `Patient presents with ${joinList(complaints.map((c) => c.toLowerCase()))}.`;
+  }
+
+  // Pain characteristics
+  if (data.painCharacteristics.length > 0) {
+    const chars = getLabels(painCharacteristics, data.painCharacteristics);
+    chiefComplaint += ` Reports ${joinList(chars.map((c) => c.toLowerCase()))} pain`;
+
+    if (data.painDuration) {
+      const duration = getLabel(painDurations, data.painDuration);
+      chiefComplaint += ` for ${duration.toLowerCase()}`;
+    }
+    chiefComplaint += '.';
+  } else if (data.painDuration && data.painDuration !== 'na') {
+    const duration = getLabel(painDurations, data.painDuration);
+    chiefComplaint += ` Duration: ${duration}.`;
+  }
+
+  lines.push(chiefComplaint || 'No chief complaint reported.');
   lines.push('');
 
   // === OBJECTIVE ===
@@ -269,12 +279,7 @@ export function generateSOAPNote(data: NoteData): string {
     lines.push(wl);
   }
 
-  // Instrumentation
-  if (data.instrumentationSystem) {
-    lines.push(`Instrumentation: ${getLabel(instrumentationSystems, data.instrumentationSystem)}`);
-  }
-
-  // Per-canal MAF (only show canals that match selected configurations)
+  // Per-canal Instrumentation & Obturation (only show canals that match selected configurations)
   if (data.canalMAFs.length > 0 && data.canalConfiguration.length > 0) {
     // Get all valid canals from selected configurations
     const validCanals = new Set<string>();
@@ -294,16 +299,36 @@ export function generateSOAPNote(data: NoteData): string {
       }
     });
 
-    const mafParts = data.canalMAFs
-      .filter((m) => (m.size || m.taper) && validCanals.has(m.canal))
+    const canalDetails = data.canalMAFs
+      .filter((m) => (m.fileSystem || m.size || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal))
       .map((m) => {
-        const parts: string[] = [m.canal];
-        if (m.size) parts.push(getLabel(mafSizes, m.size));
-        if (m.taper) parts.push(getLabel(mafTapers, m.taper));
-        return parts.join(': ');
+        const parts: string[] = [];
+
+        // Instrumentation details
+        const instrParts: string[] = [];
+        if (m.fileSystem) instrParts.push(getLabel(instrumentationSystems, m.fileSystem));
+        if (m.size) instrParts.push(getLabel(mafSizes, m.size));
+        if (m.taper) instrParts.push(getLabel(mafTapers, m.taper));
+        if (instrParts.length > 0) {
+          parts.push(`Prep: ${instrParts.join(' ')}`);
+        }
+
+        // Obturation details
+        const obtParts: string[] = [];
+        if (m.obturationTechnique) obtParts.push(getLabel(obturationTechniques, m.obturationTechnique));
+        if (m.obturationMaterial) obtParts.push(getLabel(obturationMaterials, m.obturationMaterial));
+        if (m.obturationSealer) obtParts.push(`Sealer: ${getLabel(obturationMaterials, m.obturationSealer)}`);
+        if (obtParts.length > 0) {
+          parts.push(`Obt: ${obtParts.join(' with ')}`);
+        }
+
+        return `${m.canal} - ${parts.join('; ')}`;
       });
-    if (mafParts.length > 0) {
-      lines.push(`MAF: ${mafParts.join(', ')}`);
+
+    if (canalDetails.length > 0) {
+      lines.push('');
+      lines.push('Per-canal details:');
+      canalDetails.forEach((detail) => lines.push(`  ${detail}`));
     }
   }
 
@@ -320,20 +345,6 @@ export function generateSOAPNote(data: NoteData): string {
   // Medicament
   if (data.medicament && data.medicament !== 'none') {
     lines.push(`Medicament: ${getLabel(medicaments, data.medicament)}`);
-  }
-
-  // Obturation
-  if (data.obturationTechnique || data.obturationMaterials.length > 0) {
-    let obturation = 'Obturation: ';
-    const parts: string[] = [];
-    if (data.obturationTechnique) {
-      parts.push(getLabel(obturationTechniques, data.obturationTechnique));
-    }
-    if (data.obturationMaterials.length > 0) {
-      parts.push(joinList(getLabels(obturationMaterials, data.obturationMaterials)));
-    }
-    obturation += parts.join(' with ');
-    lines.push(obturation);
   }
 
   // Restoration

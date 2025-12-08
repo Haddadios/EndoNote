@@ -54,12 +54,9 @@ const initialNoteData: NoteData = {
   customCanalNames: [],
   workingLengthMethod: [],
   workingLengthMeasurements: '',
-  instrumentationSystem: '',
   canalMAFs: [],
   irrigationProtocol: [],
   medicament: '',
-  obturationTechnique: '',
-  obturationMaterials: [],
   restoration: '',
   complications: [],
   postOpInstructions: [],
@@ -83,7 +80,7 @@ type Action =
   | { type: 'ADD_TOOTH_DIAGNOSIS' }
   | { type: 'UPDATE_TOOTH_DIAGNOSIS'; id: string; field: keyof ToothDiagnosis; value: string }
   | { type: 'REMOVE_TOOTH_DIAGNOSIS'; id: string }
-  | { type: 'UPDATE_CANAL_MAF'; canal: string; field: 'size' | 'taper'; value: string }
+  | { type: 'UPDATE_CANAL_MAF'; canal: string; field: 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string }
   | { type: 'RESET_FORM' }
   | { type: 'LOAD_TEMPLATE'; template: Partial<NoteData> }
   | { type: 'SAVE_TEMPLATE'; template: Template }
@@ -174,7 +171,16 @@ function reducer(state: State, action: Action): State {
       } else {
         updatedMAFs = [
           ...state.noteData.canalMAFs,
-          { canal: action.canal, size: '', taper: '', [action.field]: action.value },
+          {
+            canal: action.canal,
+            fileSystem: '',
+            size: '',
+            taper: '',
+            obturationTechnique: '',
+            obturationMaterial: '',
+            obturationSealer: '',
+            [action.field]: action.value
+          },
         ];
       }
 
@@ -250,7 +256,7 @@ interface NoteContextType {
   addToothDiagnosis: () => void;
   updateToothDiagnosis: (id: string, field: keyof ToothDiagnosis, value: string) => void;
   removeToothDiagnosis: (id: string) => void;
-  updateCanalMAF: (canal: string, field: 'size' | 'taper', value: string) => void;
+  updateCanalMAF: (canal: string, field: 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string) => void;
   resetForm: () => void;
   loadTemplate: (template: Partial<NoteData>) => void;
   saveTemplate: (name: string) => void;
@@ -317,7 +323,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'REMOVE_TOOTH_DIAGNOSIS', id });
   };
 
-  const updateCanalMAF = (canal: string, field: 'size' | 'taper', value: string) => {
+  const updateCanalMAF = (canal: string, field: 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string) => {
     dispatch({ type: 'UPDATE_CANAL_MAF', canal, field, value });
   };
 

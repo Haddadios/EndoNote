@@ -118,6 +118,7 @@ export const mafSizes: SelectOption[] = [
 export const mafTapers: SelectOption[] = [
   { value: '0.04', label: '0.04 taper' },
   { value: '0.06', label: '0.06 taper' },
+  { value: 'variable', label: 'Variable taper' },
 ];
 
 // Irrigation Solutions (updated: added NaOCl 8.25%)
@@ -174,7 +175,8 @@ export const obturationTechniques: SelectOption[] = [
 // Obturation Materials
 export const obturationMaterials: SelectOption[] = [
   { value: 'gp', label: 'Gutta-percha' },
-  { value: 'ah_plus', label: 'AH Plus sealer' },
+  { value: 'ah_plus', label: 'AH Plus/Thermaseal' },
+  { value: 'ah26', label: 'AH26' },
   { value: 'ah_plus_bioceramic', label: 'AH Plus Bioceramic' },
   { value: 'bc_sealer', label: 'BC Sealer (Endosequence)' },
   { value: 'ceraseal', label: 'CeraSeal' },
@@ -182,7 +184,6 @@ export const obturationMaterials: SelectOption[] = [
   { value: 'pulp_canal_sealer', label: 'Pulp Canal Sealer' },
   { value: 'sealapex', label: 'Sealapex' },
   { value: 'mta_fillapex', label: 'MTA Fillapex' },
-  { value: 'resilon', label: 'Resilon' },
 ];
 
 // Restoration Types
@@ -207,11 +208,10 @@ export const canalConfigurations: SelectOption[] = [
   { value: '2_buccal_1_palatal', label: '2 buccal, 1 palatal' },
   { value: 'mb_db_p', label: 'MB, DB, P' },
   { value: 'mb1_mb2_db_p', label: 'MB1, MB2, DB, P' },
-  { value: 'ml_dl', label: 'ML, DL' },
+  { value: 'mb_ml_db_dl', label: 'MB, ML, DB, DL' },
   { value: 'm_d', label: 'M, D' },
   { value: 'mb_ml_d', label: 'MB, ML, D' },
   { value: '3_canals', label: '3 canals' },
-  { value: '4_canals', label: '4 canals' },
   { value: 'c_shaped', label: 'C-shaped' },
   { value: 'other', label: 'Other (custom)' },
 ];
@@ -224,10 +224,9 @@ export const canalConfigurationToCanals: Record<string, string[]> = {
   '2_buccal_1_palatal': ['MB', 'DB', 'P'],
   mb_db_p: ['MB', 'DB', 'P'],
   mb1_mb2_db_p: ['MB1', 'MB2', 'DB', 'P'],
-  ml_dl: ['ML', 'DL'],
+  mb_ml_db_dl: ['MB', 'ML', 'DB', 'DL'],
   m_d: ['M', 'D'],
   mb_ml_d: ['MB', 'ML', 'D'],
   '3_canals': ['Canal 1', 'Canal 2', 'Canal 3'],
-  '4_canals': ['Canal 1', 'Canal 2', 'Canal 3', 'Canal 4'],
   c_shaped: ['C-shaped'],
 };

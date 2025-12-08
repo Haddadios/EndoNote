@@ -31,8 +31,12 @@ export interface ToothDiagnosis {
 
 export interface CanalMAF {
   canal: string;
+  fileSystem: string;
   size: string;
   taper: string;
+  obturationTechnique: string;
+  obturationMaterial: string;
+  obturationSealer: string;
 }
 
 export interface NoteData {
@@ -74,12 +78,9 @@ export interface NoteData {
   customCanalNames: string[];
   workingLengthMethod: string[];
   workingLengthMeasurements: string;
-  instrumentationSystem: string;
   canalMAFs: CanalMAF[];
   irrigationProtocol: string[];
   medicament: string;
-  obturationTechnique: string;
-  obturationMaterials: string[];
   restoration: string;
   complications: string[];
   postOpInstructions: string[];

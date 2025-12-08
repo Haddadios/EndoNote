@@ -1,7 +1,6 @@
 import { NoteProvider } from './context/NoteContext';
 import { Header } from './components/layout';
 import {
-  PatientInfo,
   SubjectiveSection,
   ObjectiveSection,
   AssessmentSection,
@@ -19,7 +18,6 @@ function App() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Column - Form Sections */}
             <div className="space-y-6">
-              <PatientInfo />
               <SubjectiveSection />
               <ObjectiveSection />
               <AssessmentSection />
