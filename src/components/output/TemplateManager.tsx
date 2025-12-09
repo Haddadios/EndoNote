@@ -19,8 +19,8 @@ export function TemplateManager() {
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Templates</h2>
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Templates</h2>
 
       <div className="flex gap-2 mb-4">
         <button
@@ -38,8 +38,8 @@ export function TemplateManager() {
       </div>
 
       {showSaveDialog && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Template Name
           </label>
           <div className="flex gap-2">
@@ -48,7 +48,7 @@ export function TemplateManager() {
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               placeholder="Enter template name..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             />
             <button
@@ -63,7 +63,7 @@ export function TemplateManager() {
                 setShowSaveDialog(false);
                 setTemplateName('');
               }}
-              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors text-sm font-medium"
+              className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors text-sm font-medium"
             >
               Cancel
             </button>
@@ -73,15 +73,15 @@ export function TemplateManager() {
 
       {templates.length > 0 ? (
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-600">Saved Templates</h3>
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-300">Saved Templates</h3>
           {templates.map((template) => (
             <div
               key={template.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
             >
               <div>
-                <div className="font-medium text-gray-800">{template.name}</div>
-                <div className="text-xs text-gray-500">
+                <div className="font-medium text-gray-800 dark:text-gray-200">{template.name}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
                   {new Date(template.createdAt).toLocaleDateString()}
                 </div>
               </div>
@@ -103,7 +103,7 @@ export function TemplateManager() {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           No templates saved yet. Fill out the form and click "Save as Template" to save your
           current selections.
         </p>

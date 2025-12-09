@@ -41,11 +41,15 @@ const initialNoteData: NoteData = {
   swelling: [],
   sinusTract: false,
   radiographicFindings: [],
+  objectiveNotes: '',
 
   // Assessment - multi-tooth diagnoses
   toothDiagnoses: [createEmptyToothDiagnosis()],
+  assessmentNotes: '',
 
   // Plan
+  treatmentOptionsOffered: [],
+  consentGiven: false,
   anesthesiaType: [],
   anesthesiaAmount: '',
   anesthesiaLocations: [],
@@ -60,12 +64,15 @@ const initialNoteData: NoteData = {
   restoration: '',
   complications: [],
   postOpInstructions: [],
+  additionalNotes: '',
+  nextVisit: [],
   followUp: '',
   referral: '',
 };
 
 const initialPreferences: Preferences = {
   toothNotation: 'universal',
+  darkMode: false,
 };
 
 interface State {
@@ -77,10 +84,10 @@ interface State {
 type Action =
   | { type: 'UPDATE_FIELD'; field: keyof NoteData; value: NoteData[keyof NoteData] }
   | { type: 'UPDATE_TOOTH'; toothNumber: string }
-  | { type: 'ADD_TOOTH_DIAGNOSIS' }
+  | { type: 'ADD_TOOTH_DIAGNOSIS'; toothNumber?: string }
   | { type: 'UPDATE_TOOTH_DIAGNOSIS'; id: string; field: keyof ToothDiagnosis; value: string }
   | { type: 'REMOVE_TOOTH_DIAGNOSIS'; id: string }
-  | { type: 'UPDATE_CANAL_MAF'; canal: string; field: 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string }
+  | { type: 'UPDATE_CANAL_MAF'; canal: string; field: 'patent' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string | boolean }
   | { type: 'RESET_FORM' }
   | { type: 'LOAD_TEMPLATE'; template: Partial<NoteData> }
   | { type: 'SAVE_TEMPLATE'; template: Template }
@@ -126,7 +133,7 @@ function reducer(state: State, action: Action): State {
         ...state,
         noteData: {
           ...state.noteData,
-          toothDiagnoses: [...state.noteData.toothDiagnoses, createEmptyToothDiagnosis()],
+          toothDiagnoses: [...state.noteData.toothDiagnoses, createEmptyToothDiagnosis(action.toothNumber || '')],
         },
       };
 
@@ -173,6 +180,7 @@ function reducer(state: State, action: Action): State {
           ...state.noteData.canalMAFs,
           {
             canal: action.canal,
+            patent: false,
             fileSystem: '',
             size: '',
             taper: '',
@@ -253,10 +261,10 @@ interface NoteContextType {
   preferences: Preferences;
   updateField: <K extends keyof NoteData>(field: K, value: NoteData[K]) => void;
   updateTooth: (toothNumber: string) => void;
-  addToothDiagnosis: () => void;
+  addToothDiagnosis: (toothNumber?: string) => void;
   updateToothDiagnosis: (id: string, field: keyof ToothDiagnosis, value: string) => void;
   removeToothDiagnosis: (id: string) => void;
-  updateCanalMAF: (canal: string, field: 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string) => void;
+  updateCanalMAF: (canal: string, field: 'patent' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => void;
   resetForm: () => void;
   loadTemplate: (template: Partial<NoteData>) => void;
   saveTemplate: (name: string) => void;
@@ -303,6 +311,15 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore));
   }, [state.templates, state.preferences]);
 
+  // Apply dark mode class to document
+  useEffect(() => {
+    if (state.preferences.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [state.preferences.darkMode]);
+
   const updateField = <K extends keyof NoteData>(field: K, value: NoteData[K]) => {
     dispatch({ type: 'UPDATE_FIELD', field, value: value as NoteData[keyof NoteData] });
   };
@@ -311,8 +328,8 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_TOOTH', toothNumber });
   };
 
-  const addToothDiagnosis = () => {
-    dispatch({ type: 'ADD_TOOTH_DIAGNOSIS' });
+  const addToothDiagnosis = (toothNumber?: string) => {
+    dispatch({ type: 'ADD_TOOTH_DIAGNOSIS', toothNumber });
   };
 
   const updateToothDiagnosis = (id: string, field: keyof ToothDiagnosis, value: string) => {
@@ -323,7 +340,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'REMOVE_TOOTH_DIAGNOSIS', id });
   };
 
-  const updateCanalMAF = (canal: string, field: 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string) => {
+  const updateCanalMAF = (canal: string, field: 'patent' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => {
     dispatch({ type: 'UPDATE_CANAL_MAF', canal, field, value });
   };
 

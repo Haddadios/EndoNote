@@ -31,6 +31,7 @@ export interface ToothDiagnosis {
 
 export interface CanalMAF {
   canal: string;
+  patent: boolean;
   fileSystem: string;
   size: string;
   taper: string;
@@ -65,11 +66,15 @@ export interface NoteData {
   swelling: string[];
   sinusTract: boolean;
   radiographicFindings: string[];
+  objectiveNotes: string;
 
   // Assessment - multi-tooth diagnoses
   toothDiagnoses: ToothDiagnosis[];
+  assessmentNotes: string;
 
   // Plan
+  treatmentOptionsOffered: string[];
+  consentGiven: boolean;
   anesthesiaType: string[];
   anesthesiaAmount: string;
   anesthesiaLocations: string[];
@@ -84,6 +89,8 @@ export interface NoteData {
   restoration: string;
   complications: string[];
   postOpInstructions: string[];
+  additionalNotes: string;
+  nextVisit: string[];
   followUp: string;
   referral: string;
 }
@@ -97,6 +104,7 @@ export interface Template {
 
 export interface Preferences {
   toothNotation: ToothNotation;
+  darkMode: boolean;
 }
 
 export interface StoredData {

@@ -31,22 +31,22 @@ export function CheckboxGroup({
 
   return (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         {label}
       </label>
       <div className={`grid ${gridCols[columns]} gap-2`}>
         {options.map((option) => (
           <label
             key={option.value}
-            className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-gray-50"
+            className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <input
               type="checkbox"
               checked={selectedValues.includes(option.value)}
               onChange={() => handleToggle(option.value)}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
             />
-            <span className="text-sm text-gray-700">{option.label}</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">{option.label}</span>
           </label>
         ))}
       </div>

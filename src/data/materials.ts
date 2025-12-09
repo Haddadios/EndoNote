@@ -6,8 +6,7 @@ export const anesthesiaTypes: SelectOption[] = [
   { value: 'lidocaine_no_epi', label: 'Lidocaine 2% plain' },
   { value: 'articaine_epi', label: 'Articaine 4% w/ 1:100,000 epi' },
   { value: 'articaine_200', label: 'Articaine 4% w/ 1:200,000 epi' },
-  { value: 'mepivacaine_epi', label: 'Mepivacaine 2% w/ 1:20,000 levo' },
-  { value: 'mepivacaine_plain', label: 'Mepivacaine 3% plain' },
+  { value: 'carbocaine', label: 'Carbocaine 3% plain' },
   { value: 'bupivacaine', label: 'Bupivacaine 0.5% w/ 1:200,000 epi' },
   { value: 'marcaine', label: 'Marcaine 0.5% w/ 1:50,000 epi' },
 ];
@@ -126,6 +125,7 @@ export const irrigationSolutions: SelectOption[] = [
   { value: 'naocl_8.25', label: 'NaOCl 8.25%' },
   { value: 'naocl_6', label: 'NaOCl 6%' },
   { value: 'naocl_5.25', label: 'NaOCl 5.25%' },
+  { value: 'naocl_4', label: 'NaOCl 4%' },
   { value: 'naocl_3', label: 'NaOCl 3%' },
   { value: 'naocl_2.5', label: 'NaOCl 2.5%' },
   { value: 'naocl_1', label: 'NaOCl 1%' },
@@ -138,13 +138,11 @@ export const irrigationSolutions: SelectOption[] = [
 ];
 
 export const irrigationTechniques: SelectOption[] = [
-  { value: 'passive', label: 'Passive irrigation' },
   { value: 'manual_agitation', label: 'Manual dynamic agitation' },
-  { value: 'eddy', label: 'EDDY sonic activation' },
   { value: 'pui', label: 'Passive ultrasonic irrigation (PUI)' },
+  { value: 'laser', label: 'Laser Activation' },
   { value: 'gentlewave', label: 'GentleWave' },
   { value: 'endoactivator', label: 'EndoActivator' },
-  { value: 'xp_endo_finisher', label: 'XP-endo Finisher' },
 ];
 
 // Intracanal Medicaments
@@ -160,30 +158,36 @@ export const medicaments: SelectOption[] = [
 
 // Obturation Techniques (updated: added MTA options)
 export const obturationTechniques: SelectOption[] = [
-  { value: 'single_cone', label: 'Single cone' },
+  { value: 'single_cone', label: 'Single cone hydraulic condensation' },
   { value: 'lateral_condensation', label: 'Lateral condensation' },
   { value: 'warm_vertical', label: 'Warm vertical condensation' },
-  { value: 'continuous_wave', label: 'Continuous wave' },
   { value: 'thermafil', label: 'Thermafil/GuttaCore' },
-  { value: 'system_b', label: 'System B + backfill' },
-  { value: 'calamus', label: 'Calamus' },
-  { value: 'elements', label: 'Elements obturation' },
   { value: 'mta_apical_plug', label: 'MTA Apical Plug' },
   { value: 'mta_obturation', label: 'MTA obturation' },
 ];
 
 // Obturation Materials
 export const obturationMaterials: SelectOption[] = [
-  { value: 'gp', label: 'Gutta-percha' },
-  { value: 'ah_plus', label: 'AH Plus/Thermaseal' },
+  { value: 'gp_sealer', label: 'Gutta-percha + Sealer' },
+  { value: 'mta_obturation', label: 'MTA Obturation' },
+  { value: 'gp_sealer_mta', label: 'Gutta-percha + Sealer & MTA Obturation' },
+];
+
+// Obturation Sealers
+export const obturationSealers: SelectOption[] = [
+  { value: 'thermaseal', label: 'Thermaseal/AH Plus/Ribbon' },
   { value: 'ah26', label: 'AH26' },
-  { value: 'ah_plus_bioceramic', label: 'AH Plus Bioceramic' },
-  { value: 'bc_sealer', label: 'BC Sealer (Endosequence)' },
-  { value: 'ceraseal', label: 'CeraSeal' },
+  { value: 'bc_sealer', label: 'Bioceramic Sealer' },
+  { value: 'bc_sealer_hiflow', label: 'Bioceramic Sealer Hi-Flow' },
   { value: 'bioroot', label: 'BioRoot RCS' },
   { value: 'pulp_canal_sealer', label: 'Pulp Canal Sealer' },
+  { value: 'roth_sealer', label: 'Roth Sealer' },
   { value: 'sealapex', label: 'Sealapex' },
   { value: 'mta_fillapex', label: 'MTA Fillapex' },
+  { value: 'grey_mta', label: 'Grey MTA' },
+  { value: 'white_mta', label: 'White MTA' },
+  { value: 'biodentine', label: 'Biodentine' },
+  { value: 'bc_putty', label: 'BC Putty' },
 ];
 
 // Restoration Types
@@ -209,9 +213,7 @@ export const canalConfigurations: SelectOption[] = [
   { value: 'mb_db_p', label: 'MB, DB, P' },
   { value: 'mb1_mb2_db_p', label: 'MB1, MB2, DB, P' },
   { value: 'mb_ml_db_dl', label: 'MB, ML, DB, DL' },
-  { value: 'm_d', label: 'M, D' },
   { value: 'mb_ml_d', label: 'MB, ML, D' },
-  { value: '3_canals', label: '3 canals' },
   { value: 'c_shaped', label: 'C-shaped' },
   { value: 'other', label: 'Other (custom)' },
 ];
@@ -225,8 +227,6 @@ export const canalConfigurationToCanals: Record<string, string[]> = {
   mb_db_p: ['MB', 'DB', 'P'],
   mb1_mb2_db_p: ['MB1', 'MB2', 'DB', 'P'],
   mb_ml_db_dl: ['MB', 'ML', 'DB', 'DL'],
-  m_d: ['M', 'D'],
   mb_ml_d: ['MB', 'ML', 'D'],
-  '3_canals': ['Canal 1', 'Canal 2', 'Canal 3'],
   c_shaped: ['C-shaped'],
 };

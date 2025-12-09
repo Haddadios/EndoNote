@@ -15,7 +15,7 @@ export const treatmentTypes: SelectOption[] = [
   { value: 'autotransplantation', label: 'Autotransplantation' },
   { value: 'direct_restoration', label: 'Direct Restoration' },
   { value: 'no_treatment_monitoring', label: 'No treatment & Monitoring' },
-  { value: 'trauma', label: 'Trauma' },
+  { value: 'trauma', label: 'Trauma Management' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -33,7 +33,7 @@ export const treatmentLabels: Record<TreatmentType, string> = {
   autotransplantation: 'Autotransplantation',
   direct_restoration: 'Direct Restoration',
   no_treatment_monitoring: 'No treatment & Monitoring',
-  trauma: 'Trauma',
+  trauma: 'Trauma Management',
   other: 'Other',
 };
 
@@ -82,6 +82,16 @@ export const followUpOptions: SelectOption[] = [
   { value: 'prn', label: 'As needed (PRN)' },
   { value: 'refer_restorative', label: 'Referred back for restoration' },
   { value: 'refer_specialist', label: 'Referred to specialist' },
+  { value: 'other', label: 'Other' },
+  { value: 'none', label: 'None' },
+  { value: 'NV', label: 'Next Visit to Continue Treatment' },
+];
+
+// Next Visit Options
+export const nextVisitOptions: SelectOption[] = [
+  { value: 'continue_treatment', label: 'Continue Treatment' },
+  { value: 'follow_up_recall', label: 'Follow Up/Recall' },
+  { value: 'na', label: 'N/A' },
 ];
 
 // Referral Options
@@ -92,4 +102,15 @@ export const referralOptions: SelectOption[] = [
   { value: 'periodontist', label: 'Periodontist' },
   { value: 'oral_surgeon', label: 'Oral surgeon' },
   { value: 'endodontist', label: 'Endodontist' },
+];
+
+// Treatment Options Offered
+export const treatmentOptionsOffered: SelectOption[] = [
+  { value: 'initial_rct', label: 'Initial RCT' },
+  { value: 'continuing_rct', label: 'Continuing Prev. Initiated RCT' },
+  { value: 'ns_rerct', label: 'NSReRCT' },
+  { value: 'apical_microsurgery', label: 'Apical Microsurgery' },
+  { value: 'extraction', label: 'Extraction' },
+  { value: 'no_treatment', label: 'No Treatment' },
+  { value: 'other', label: 'Other' },
 ];

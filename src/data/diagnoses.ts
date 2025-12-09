@@ -82,6 +82,6 @@ export const radiographicFindings: SelectOption[] = [
 // Prognosis Options
 export const prognosisOptions: SelectOption[] = [
   { value: 'favorable', label: 'Favorable' },
-  { value: 'questionable', label: 'Questionable' },
+  { value: 'guarded', label: 'Guarded' },
   { value: 'unfavorable', label: 'Unfavorable' },
 ];

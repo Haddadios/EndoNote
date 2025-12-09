@@ -17,10 +17,10 @@ export function ObjectiveSection() {
   const teethOptions = preferences.toothNotation === 'universal' ? universalTeeth : fdiTeeth;
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Objective</h2>
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Objective</h2>
 
-      <h3 className="text-md font-medium text-gray-700 mt-2 mb-2">Tooth Information</h3>
+      <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-2 mb-2">Tooth Information</h3>
       <Dropdown
         label="Tooth Number"
         value={noteData.toothNumber}
@@ -31,13 +31,13 @@ export function ObjectiveSection() {
       />
 
       {noteData.toothNumber && (
-        <div className="mt-2 mb-4 p-2 bg-gray-50 rounded text-sm">
-          <span className="text-gray-600">Tooth Type: </span>
-          <span className="font-medium">{toothTypeLabels[noteData.toothType]}</span>
+        <div className="mt-2 mb-4 p-2 bg-gray-50 dark:bg-gray-700 rounded text-sm">
+          <span className="text-gray-600 dark:text-gray-400">Tooth Type: </span>
+          <span className="font-medium text-gray-900 dark:text-gray-100">{toothTypeLabels[noteData.toothType]}</span>
         </div>
       )}
 
-      <h3 className="text-md font-medium text-gray-700 mt-4 mb-2">Vitality Tests</h3>
+      <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-4 mb-2">Vitality Tests</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Dropdown
           label="Cold Test"
@@ -64,7 +64,7 @@ export function ObjectiveSection() {
         />
       </div>
 
-      <h3 className="text-md font-medium text-gray-700 mt-4 mb-2">Clinical Findings</h3>
+      <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-4 mb-2">Clinical Findings</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Dropdown
           label="Percussion"
@@ -121,6 +121,20 @@ export function ObjectiveSection() {
         onChange={(values) => updateField('radiographicFindings', values)}
         columns={2}
       />
+
+      {/* Additional Comments */}
+      <div className="mt-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Additional Comments
+        </label>
+        <textarea
+          value={noteData.objectiveNotes}
+          onChange={(e) => updateField('objectiveNotes', e.target.value)}
+          rows={3}
+          placeholder="Enter additional objective findings, CBCT findings, etc..."
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+        />
+      </div>
     </div>
   );
 }

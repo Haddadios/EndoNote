@@ -13,6 +13,7 @@ import {
   radiographicFindings,
   treatmentTypes,
   prognosisOptions,
+  treatmentOptionsOffered,
   anesthesiaTypes,
   anesthesiaAmounts,
   anesthesiaLocations,
@@ -26,11 +27,13 @@ import {
   medicaments,
   obturationTechniques,
   obturationMaterials,
+  obturationSealers,
   restorationTypes,
   canalConfigurations,
   canalConfigurationToCanals,
   complications,
   postOpInstructions,
+  nextVisitOptions,
   followUpOptions,
   referralOptions,
 } from '../data';
@@ -184,6 +187,13 @@ export function generateSOAPNote(data: NoteData): string {
     lines.push(`Radiographic: ${joinList(findings)}`);
   }
 
+  // Objective additional comments
+  if (data.objectiveNotes && data.objectiveNotes.trim()) {
+    lines.push('');
+    lines.push('Additional Comments:');
+    lines.push(data.objectiveNotes.trim());
+  }
+
   lines.push('');
 
   // === ASSESSMENT ===
@@ -215,10 +225,37 @@ export function generateSOAPNote(data: NoteData): string {
     lines.push('Assessment pending.');
   }
 
+  // Assessment additional comments
+  if (data.assessmentNotes && data.assessmentNotes.trim()) {
+    lines.push('');
+    lines.push('Additional Comments:');
+    lines.push(data.assessmentNotes.trim());
+  }
+
   lines.push('');
 
   // === PLAN ===
   lines.push('PLAN:');
+
+  // Treatment Options Offered
+  if (data.treatmentOptionsOffered.length > 0) {
+    const options = getLabels(treatmentOptionsOffered, data.treatmentOptionsOffered);
+    lines.push(`Treatment options offered: ${joinList(options)}`);
+    lines.push('');
+  }
+
+  // Consent (if given)
+  if (data.consentGiven) {
+    lines.push('CONSENT:');
+    lines.push('Explained diagnosis and treatment option to patient. Discussed digital xray and CBCT findings. Patient would like to proceed with endodontic therapy as recommended. Discussed that after treatment, patient may need to return to referring doctor for continued dental treatment for this tooth which may include build-up, post, and crown. Patient understood and had no further questions.');
+    lines.push('');
+    lines.push('Reviewed consent form with pt thoroughly.');
+    lines.push('');
+    lines.push('Discussed risks, benefits, and alternatives, including no treatment. Risks discussed including but not limited to: swelling; sensitivity; bleeding; pain either during or after treatment; infection; treatment failure; complications resulting from the use of dental instruments (broken instruments-perforation of tooth, root, sinus), medications, anesthetics and injections; fracture or damage to existing restorations on the tooth being worked on or nearby teeth; fracture to tooth structure or tooth roots of tooth being worked on and/or nearby teeth; possibility of root fracture or tooth splitting during, or after treatment discussed.');
+    lines.push('');
+    lines.push('Patient was able to ask questions and get answers to all questions before treatment. Patient fully understands and agrees with the proposed treatment. Informed consent was obtained and signed.');
+    lines.push('');
+  }
 
   // Anesthesia
   if (data.anesthesiaType.length > 0 || data.anesthesiaAmount || data.anesthesiaLocations.length > 0) {
@@ -304,6 +341,10 @@ export function generateSOAPNote(data: NoteData): string {
       .map((m) => {
         const parts: string[] = [];
 
+        // Patent status
+        const patentStatus = m.patent ? 'Patent' : 'Not Patent';
+        parts.push(patentStatus);
+
         // Instrumentation details
         const instrParts: string[] = [];
         if (m.fileSystem) instrParts.push(getLabel(instrumentationSystems, m.fileSystem));
@@ -317,7 +358,7 @@ export function generateSOAPNote(data: NoteData): string {
         const obtParts: string[] = [];
         if (m.obturationTechnique) obtParts.push(getLabel(obturationTechniques, m.obturationTechnique));
         if (m.obturationMaterial) obtParts.push(getLabel(obturationMaterials, m.obturationMaterial));
-        if (m.obturationSealer) obtParts.push(`Sealer: ${getLabel(obturationMaterials, m.obturationSealer)}`);
+        if (m.obturationSealer) obtParts.push(`Sealer: ${getLabel(obturationSealers, m.obturationSealer)}`);
         if (obtParts.length > 0) {
           parts.push(`Obt: ${obtParts.join(' with ')}`);
         }
@@ -371,6 +412,19 @@ export function generateSOAPNote(data: NoteData): string {
   if (data.postOpInstructions.length > 0) {
     const instructions = getLabels(postOpInstructions, data.postOpInstructions);
     lines.push(`Post-op: ${joinList(instructions)}.`);
+  }
+
+  // Additional notes
+  if (data.additionalNotes && data.additionalNotes.trim()) {
+    lines.push('');
+    lines.push('Additional Notes:');
+    lines.push(data.additionalNotes.trim());
+  }
+
+  // Next visit
+  if (data.nextVisit.length > 0) {
+    const nextVisitLabels = getLabels(nextVisitOptions, data.nextVisit);
+    lines.push(`Next Visit: ${joinList(nextVisitLabels)}`);
   }
 
   // Follow-up

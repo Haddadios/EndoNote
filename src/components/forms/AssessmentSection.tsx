@@ -1,5 +1,5 @@
 import { useNote } from '../../context/NoteContext';
-import { Dropdown } from '../common';
+import { Dropdown, Odontogram } from '../common';
 import {
   universalTeeth,
   fdiTeeth,
@@ -28,9 +28,9 @@ function ToothDiagnosisEntry({
   canRemove,
 }: ToothDiagnosisEntryProps) {
   return (
-    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4">
+    <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 mb-4">
       <div className="flex justify-between items-center mb-3">
-        <h4 className="font-medium text-gray-700">Tooth #{index + 1}</h4>
+        <h4 className="font-medium text-gray-700 dark:text-gray-200">Tooth #{index + 1}</h4>
         {canRemove && (
           <button
             onClick={() => onRemove(diagnosis.id)}
@@ -89,33 +89,91 @@ function ToothDiagnosisEntry({
 }
 
 export function AssessmentSection() {
-  const { noteData, preferences, addToothDiagnosis, updateToothDiagnosis, removeToothDiagnosis } =
+  const { noteData, preferences, updateField, addToothDiagnosis, updateToothDiagnosis, removeToothDiagnosis } =
     useNote();
 
   const teethOptions = preferences.toothNotation === 'universal' ? universalTeeth : fdiTeeth;
 
-  return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Assessment</h2>
+  // Get list of teeth that have diagnoses
+  const selectedTeeth = noteData.toothDiagnoses
+    .filter(d => d.toothNumber)
+    .map(d => d.toothNumber);
 
-      {noteData.toothDiagnoses.map((diagnosis, index) => (
-        <ToothDiagnosisEntry
-          key={diagnosis.id}
-          diagnosis={diagnosis}
-          index={index}
-          teethOptions={teethOptions}
-          onUpdate={updateToothDiagnosis}
-          onRemove={removeToothDiagnosis}
-          canRemove={noteData.toothDiagnoses.length > 1}
+  // Handle tooth selection from odontogram
+  const handleToothSelect = (toothNumber: string) => {
+    const existingDiagnosis = noteData.toothDiagnoses.find(d => d.toothNumber === toothNumber);
+    
+    if (existingDiagnosis) {
+      // Clicking same tooth again - deselect it (toggle off)
+      if (noteData.toothDiagnoses.length > 1) {
+        removeToothDiagnosis(existingDiagnosis.id);
+      } else {
+        // If it's the only diagnosis, just clear the tooth number instead of removing
+        updateToothDiagnosis(existingDiagnosis.id, 'toothNumber', '');
+      }
+    } else {
+      // Clicking a different tooth - add it to selection
+      const emptyDiagnosis = noteData.toothDiagnoses.find(d => !d.toothNumber);
+      
+      if (emptyDiagnosis) {
+        // Use the first empty slot
+        updateToothDiagnosis(emptyDiagnosis.id, 'toothNumber', toothNumber);
+      } else {
+        // No empty slots, add a new diagnosis entry with the tooth number
+        addToothDiagnosis(toothNumber);
+      }
+    }
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Assessment</h2>
+
+      {/* Odontogram */}
+      <div className="mb-6">
+        <Odontogram
+          selectedTeeth={selectedTeeth}
+          onToothSelect={handleToothSelect}
+          notation={preferences.toothNotation}
         />
-      ))}
+      </div>
+
+      {/* Tooth Diagnoses */}
+      <div className="mb-4">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">Tooth Diagnoses</h3>
+        {noteData.toothDiagnoses.map((diagnosis, index) => (
+          <ToothDiagnosisEntry
+            key={diagnosis.id}
+            diagnosis={diagnosis}
+            index={index}
+            teethOptions={teethOptions}
+            onUpdate={updateToothDiagnosis}
+            onRemove={removeToothDiagnosis}
+            canRemove={noteData.toothDiagnoses.length > 1}
+          />
+        ))}
+      </div>
 
       <button
-        onClick={addToothDiagnosis}
-        className="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
+        onClick={() => addToothDiagnosis()}
+        className="w-full py-2 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
       >
         + Add Another Tooth
       </button>
+
+      {/* Additional Comments */}
+      <div className="mt-6">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Additional Comments
+        </label>
+        <textarea
+          value={noteData.assessmentNotes}
+          onChange={(e) => updateField('assessmentNotes', e.target.value)}
+          rows={3}
+          placeholder="Enter any additional assessment notes or observations..."
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+        />
+      </div>
     </div>
   );
 }
