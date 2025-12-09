@@ -1,5 +1,5 @@
 import { useNote } from '../../context/NoteContext';
-import { Dropdown, CheckboxGroup, TextInput, Checkbox } from '../common';
+import { Dropdown, CheckboxGroup, Checkbox } from '../common';
 import {
   vitalityResults,
   percussionPalpationResults,
