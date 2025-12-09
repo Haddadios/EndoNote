@@ -39,63 +39,81 @@ export function ObjectiveSection() {
 
       <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-4 mb-2">Vitality Tests</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Dropdown
+        <CheckboxGroup
           label="Cold Test"
-          value={noteData.coldTest}
           options={vitalityResults}
-          onChange={(value) => updateField('coldTest', value)}
-          placeholder="Select..."
+          selectedValues={noteData.coldTest}
+          onChange={(values) => updateField('coldTest', values)}
+          columns={1}
         />
 
-        <Dropdown
+        <CheckboxGroup
           label="EPT"
-          value={noteData.eptTest}
           options={vitalityResults}
-          onChange={(value) => updateField('eptTest', value)}
-          placeholder="Select..."
+          selectedValues={noteData.eptTest}
+          onChange={(values) => updateField('eptTest', values)}
+          columns={1}
         />
 
-        <Dropdown
+        <CheckboxGroup
           label="Heat Test"
-          value={noteData.heatTest}
           options={vitalityResults}
-          onChange={(value) => updateField('heatTest', value)}
-          placeholder="Select..."
+          selectedValues={noteData.heatTest}
+          onChange={(values) => updateField('heatTest', values)}
+          columns={1}
         />
       </div>
 
       <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-4 mb-2">Clinical Findings</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Dropdown
+        <CheckboxGroup
           label="Percussion"
-          value={noteData.percussion}
           options={percussionPalpationResults}
-          onChange={(value) => updateField('percussion', value)}
-          placeholder="Select..."
+          selectedValues={noteData.percussion}
+          onChange={(values) => updateField('percussion', values)}
+          columns={1}
         />
 
-        <Dropdown
+        <CheckboxGroup
           label="Palpation"
-          value={noteData.palpation}
           options={percussionPalpationResults}
-          onChange={(value) => updateField('palpation', value)}
-          placeholder="Select..."
+          selectedValues={noteData.palpation}
+          onChange={(values) => updateField('palpation', values)}
+          columns={1}
         />
 
-        <TextInput
-          label="Probing Depths"
-          value={noteData.probingDepths}
-          onChange={(value) => updateField('probingDepths', value)}
-          placeholder="e.g., WNL, 3-4mm, 6mm MB"
-        />
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Probing Depths (mm)
+          </label>
+          <div className="grid grid-cols-6 gap-2">
+            {(['MB', 'B', 'DB', 'DL', 'L', 'ML'] as const).map((surface) => (
+              <div key={surface} className="flex flex-col items-center">
+                <label className="text-xs text-gray-500 dark:text-gray-400 mb-1">{surface}</label>
+                <input
+                  type="text"
+                  value={noteData.probingDepths[surface]}
+                  onChange={(e) => updateField('probingDepths', {
+                    ...noteData.probingDepths,
+                    [surface]: e.target.value
+                  })}
+                  className="w-full px-2 py-1.5 text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  placeholder="-"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
 
-        <Dropdown
-          label="Mobility"
-          value={noteData.mobility}
-          options={mobilityGrades}
-          onChange={(value) => updateField('mobility', value)}
-          placeholder="Select..."
-        />
+        <div className="md:col-span-2">
+          <CheckboxGroup
+            label="Mobility"
+            options={mobilityGrades}
+            selectedValues={noteData.mobility}
+            onChange={(values) => updateField('mobility', values)}
+            columns={4}
+          />
+        </div>
       </div>
 
       <CheckboxGroup

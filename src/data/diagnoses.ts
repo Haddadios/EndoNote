@@ -31,6 +31,7 @@ export const vitalityResults: SelectOption[] = [
   { value: 'negative', label: 'Negative (no response)' },
   { value: 'exaggerated', label: 'Exaggerated/lingering' },
   { value: 'diminished', label: 'Diminished' },
+  { value: 'inconclusive', label: 'Inconclusive' },
   { value: 'not_tested', label: 'Not tested' },
 ];
 

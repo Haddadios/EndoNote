@@ -40,6 +40,15 @@ export interface CanalMAF {
   obturationSealer: string;
 }
 
+export interface ProbingDepths {
+  MB: string; // Mesio-Buccal
+  B: string;  // Buccal
+  DB: string; // Disto-Buccal
+  DL: string; // Disto-Lingual
+  L: string;  // Lingual
+  ML: string; // Mesio-Lingual
+}
+
 export interface NoteData {
   // Patient/Tooth Info (for quick-select / first tooth)
   toothNumber: string;
@@ -56,13 +65,13 @@ export interface NoteData {
   medicalHistoryAlerts: string[];
 
   // Objective (clinical findings only, diagnoses moved to assessment)
-  coldTest: string;
-  eptTest: string;
-  heatTest: string;
-  percussion: string;
-  palpation: string;
-  probingDepths: string;
-  mobility: string;
+  coldTest: string[];
+  eptTest: string[];
+  heatTest: string[];
+  percussion: string[];
+  palpation: string[];
+  probingDepths: ProbingDepths;
+  mobility: string[];
   swelling: string[];
   sinusTract: boolean;
   radiographicFindings: string[];

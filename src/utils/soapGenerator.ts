@@ -133,14 +133,17 @@ export function generateSOAPNote(data: NoteData): string {
 
   // Vitality tests
   const vitalityParts: string[] = [];
-  if (data.coldTest) {
-    vitalityParts.push(`Cold: ${getLabel(vitalityResults, data.coldTest)}`);
+  if (data.coldTest.length > 0) {
+    const coldLabels = getLabels(vitalityResults, data.coldTest);
+    vitalityParts.push(`Cold: ${joinList(coldLabels)}`);
   }
-  if (data.eptTest) {
-    vitalityParts.push(`EPT: ${getLabel(vitalityResults, data.eptTest)}`);
+  if (data.eptTest.length > 0) {
+    const eptLabels = getLabels(vitalityResults, data.eptTest);
+    vitalityParts.push(`EPT: ${joinList(eptLabels)}`);
   }
-  if (data.heatTest) {
-    vitalityParts.push(`Heat: ${getLabel(vitalityResults, data.heatTest)}`);
+  if (data.heatTest.length > 0) {
+    const heatLabels = getLabels(vitalityResults, data.heatTest);
+    vitalityParts.push(`Heat: ${joinList(heatLabels)}`);
   }
   if (vitalityParts.length > 0) {
     lines.push(`Vitality: ${vitalityParts.join(' | ')}`);
@@ -148,11 +151,13 @@ export function generateSOAPNote(data: NoteData): string {
 
   // Clinical findings line
   const clinicalParts: string[] = [];
-  if (data.percussion) {
-    clinicalParts.push(`Percussion: ${getLabel(percussionPalpationResults, data.percussion)}`);
+  if (data.percussion.length > 0) {
+    const percussionLabels = getLabels(percussionPalpationResults, data.percussion);
+    clinicalParts.push(`Percussion: ${joinList(percussionLabels)}`);
   }
-  if (data.palpation) {
-    clinicalParts.push(`Palpation: ${getLabel(percussionPalpationResults, data.palpation)}`);
+  if (data.palpation.length > 0) {
+    const palpationLabels = getLabels(percussionPalpationResults, data.palpation);
+    clinicalParts.push(`Palpation: ${joinList(palpationLabels)}`);
   }
   if (clinicalParts.length > 0) {
     lines.push(clinicalParts.join(' | '));
@@ -161,10 +166,18 @@ export function generateSOAPNote(data: NoteData): string {
   // Probing and mobility
   const probingMobility: string[] = [];
   if (data.probingDepths) {
-    probingMobility.push(`Probing: ${data.probingDepths}`);
+    const depths = data.probingDepths;
+    const hasValues = Object.values(depths).some(v => v && v.trim());
+    if (hasValues) {
+      const surfaceValues = ['MB', 'B', 'DB', 'DL', 'L', 'ML']
+        .map(surface => `${surface}: ${depths[surface as keyof typeof depths] || '-'}`)
+        .join(', ');
+      probingMobility.push(`Probing (mm): ${surfaceValues}`);
+    }
   }
-  if (data.mobility) {
-    probingMobility.push(`Mobility: ${getLabel(mobilityGrades, data.mobility)}`);
+  if (data.mobility.length > 0) {
+    const mobilityLabels = getLabels(mobilityGrades, data.mobility);
+    probingMobility.push(`Mobility: ${joinList(mobilityLabels)}`);
   }
   if (probingMobility.length > 0) {
     lines.push(probingMobility.join(' | '));
