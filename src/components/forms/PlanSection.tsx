@@ -1,9 +1,9 @@
 import { useNote } from '../../context/NoteContext';
 import { Dropdown, CheckboxGroup, TextInput } from '../common';
+import type { AnesthesiaAmounts } from '../../types';
 import {
   treatmentOptionsOffered,
   anesthesiaTypes,
-  anesthesiaAmounts,
   anesthesiaLocations,
   isolationMethods,
   workingLengthMethods,
@@ -67,6 +67,8 @@ export function PlanSection() {
     return noteData.canalMAFs.find((m) => m.canal === canal) || {
       canal,
       patent: false,
+      workingLength: '',
+      referencePoint: '',
       fileSystem: '',
       size: '',
       taper: '',
@@ -74,6 +76,14 @@ export function PlanSection() {
       obturationMaterial: '',
       obturationSealer: ''
     };
+  };
+
+  // Handle anesthesia amount change
+  const handleAnesthesiaAmountChange = (key: keyof AnesthesiaAmounts, value: string) => {
+    updateField('anesthesiaAmounts', {
+      ...noteData.anesthesiaAmounts,
+      [key]: value
+    });
   };
 
   return (
@@ -89,16 +99,25 @@ export function PlanSection() {
         columns={2}
       />
 
-      {/* Consent Checkbox */}
-      <div className="mb-4">
-        <label className="flex items-center space-x-2 cursor-pointer">
+      <TextInput
+        label="Treatment Comments"
+        value={noteData.treatmentComments}
+        onChange={(value) => updateField('treatmentComments', value)}
+        placeholder="Additional treatment notes..."
+        multiline
+        rows={2}
+      />
+
+      {/* Consent Checkbox - Enlarged and Highlighted */}
+      <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/30 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg">
+        <label className="flex items-center space-x-3 cursor-pointer">
           <input
             type="checkbox"
             checked={noteData.consentGiven}
             onChange={(e) => updateField('consentGiven', e.target.checked)}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            className="w-6 h-6 text-green-600 border-2 border-gray-400 rounded focus:ring-green-500 focus:ring-2"
           />
-          <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
+          <span className="text-base font-bold text-gray-800 dark:text-gray-200">
             Has the patient consented to perform the recommended treatment?
           </span>
         </label>
@@ -106,22 +125,32 @@ export function PlanSection() {
 
       {/* Anesthesia */}
       <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-2 mb-2">Anesthesia</h3>
-      <CheckboxGroup
-        label="Anesthesia Type"
-        options={anesthesiaTypes}
-        selectedValues={noteData.anesthesiaType}
-        onChange={(values) => updateField('anesthesiaType', values)}
-        columns={2}
-      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Dropdown
-          label="Amount"
-          value={noteData.anesthesiaAmount}
-          options={anesthesiaAmounts}
-          onChange={(value) => updateField('anesthesiaAmount', value)}
-          placeholder="Select amount..."
-        />
+      {/* Anesthesia Type with Carpule Inputs */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Anesthesia Type & Amount (carpules)
+        </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {anesthesiaTypes.map((type) => {
+            const key = type.value as keyof AnesthesiaAmounts;
+            const amount = noteData.anesthesiaAmounts[key] || '';
+            return (
+              <div key={type.value} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={amount}
+                  onChange={(e) => handleAnesthesiaAmountChange(key, e.target.value)}
+                  placeholder="0"
+                  className="w-16 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{type.label}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <CheckboxGroup
@@ -182,13 +211,6 @@ export function PlanSection() {
         columns={2}
       />
 
-      <TextInput
-        label="Measurements"
-        value={noteData.workingLengthMeasurements}
-        onChange={(value) => updateField('workingLengthMeasurements', value)}
-        placeholder="e.g., MB: 21mm, DB: 20mm, P: 22mm"
-      />
-
       {/* Per-Canal Instrumentation Setup */}
       {selectedCanals.length > 0 && (
         <div className="mt-4">
@@ -196,14 +218,17 @@ export function PlanSection() {
           <div className="space-y-4">
             {selectedCanals.map((canal, canalIndex) => {
               const maf = getCanalMAF(canal);
-              
+
               // Function to copy from previous canal
               const copyFromPreviousCanal = () => {
                 if (canalIndex > 0) {
                   const previousCanal = selectedCanals[canalIndex - 1];
                   const previousMAF = getCanalMAF(previousCanal);
-                  
-                  // Copy all fields except patent status
+
+                  // Copy all fields including patent, workingLength, and referencePoint
+                  updateCanalMAF(canal, 'patent', previousMAF.patent);
+                  if (previousMAF.workingLength) updateCanalMAF(canal, 'workingLength', previousMAF.workingLength);
+                  if (previousMAF.referencePoint) updateCanalMAF(canal, 'referencePoint', previousMAF.referencePoint);
                   if (previousMAF.fileSystem) updateCanalMAF(canal, 'fileSystem', previousMAF.fileSystem);
                   if (previousMAF.size) updateCanalMAF(canal, 'size', previousMAF.size);
                   if (previousMAF.taper) updateCanalMAF(canal, 'taper', previousMAF.taper);
@@ -228,15 +253,53 @@ export function PlanSection() {
                         </button>
                       )}
                     </div>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/30 border-2 border-amber-300 dark:border-amber-700 rounded-lg">
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 mr-1">Patency:</span>
+                      <button
+                        onClick={() => updateCanalMAF(canal, 'patent', true)}
+                        className={`px-3 py-1 text-xs font-medium rounded transition-all ${
+                          maf.patent
+                            ? 'bg-green-600 text-white shadow-md'
+                            : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-500'
+                        }`}
+                      >
+                        Patent
+                      </button>
+                      <button
+                        onClick={() => updateCanalMAF(canal, 'patent', false)}
+                        className={`px-3 py-1 text-xs font-medium rounded transition-all ${
+                          !maf.patent
+                            ? 'bg-red-600 text-white shadow-md'
+                            : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-500'
+                        }`}
+                      >
+                        Not Patent
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Working Length & Reference Point */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Working Length (mm)</label>
                       <input
-                        type="checkbox"
-                        checked={maf.patent}
-                        onChange={(e) => updateCanalMAF(canal, 'patent', e.target.checked)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
+                        type="text"
+                        value={maf.workingLength}
+                        onChange={(e) => updateCanalMAF(canal, 'workingLength', e.target.value)}
+                        placeholder="e.g., 21"
+                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Patent</span>
-                    </label>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Reference Point</label>
+                      <input
+                        type="text"
+                        value={maf.referencePoint}
+                        onChange={(e) => updateCanalMAF(canal, 'referencePoint', e.target.value)}
+                        placeholder="e.g., cusp tip, incisal edge"
+                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
 
                   {/* Instrumentation */}
@@ -377,6 +440,15 @@ export function PlanSection() {
         selectedValues={noteData.complications}
         onChange={(values) => updateField('complications', values)}
         columns={2}
+      />
+
+      <TextInput
+        label="Complications Comments"
+        value={noteData.complicationsComments}
+        onChange={(value) => updateField('complicationsComments', value)}
+        placeholder="Additional details about complications..."
+        multiline
+        rows={2}
       />
 
       {/* Post-op Instructions */}

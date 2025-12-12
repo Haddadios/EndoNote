@@ -4,6 +4,7 @@ import {
   painCharacteristics,
   painDurations,
   medicalHistoryAlerts,
+  genderOptions,
   pulpalDiagnoses,
   periapicalDiagnoses,
   vitalityResults,
@@ -15,7 +16,6 @@ import {
   prognosisOptions,
   treatmentOptionsOffered,
   anesthesiaTypes,
-  anesthesiaAmounts,
   anesthesiaLocations,
   isolationMethods,
   workingLengthMethods,
@@ -62,12 +62,26 @@ function joinList(items: string[]): string {
   return items.slice(0, -1).join(', ') + ', and ' + items[items.length - 1];
 }
 
+// Chief complaints that use "presenting for" instead of "presents with"
+const presentingForComplaints = ['referred', 'retreatment', 'continued_treatment', 'recall'];
+
 export function generateSOAPNote(data: NoteData): string {
   const lines: string[] = [];
+  const isFirstVisit = data.visitType === 'first_visit';
 
   // === SUBJECTIVE ===
   lines.push('SUBJECTIVE:');
   lines.push('');
+
+  // Demographics
+  if (data.age || data.gender) {
+    const demographics: string[] = [];
+    if (data.age) demographics.push(`${data.age} year old`);
+    if (data.gender) demographics.push(getLabel(genderOptions, data.gender).toLowerCase());
+    if (demographics.length > 0) {
+      lines.push(`Patient: ${demographics.join(' ')}`);
+    }
+  }
 
   // History subsection
   lines.push('History:');
@@ -88,10 +102,15 @@ export function generateSOAPNote(data: NoteData): string {
     history = vitals.join(', ') + '.';
   }
 
-  // Medical history
-  if (data.medicalHistoryAlerts.length > 0 && !data.medicalHistoryAlerts.includes('none')) {
-    const alerts = getLabels(medicalHistoryAlerts, data.medicalHistoryAlerts);
-    history += ` Medical history: ${joinList(alerts)}.`;
+  // Medical history (only for first visit)
+  if (isFirstVisit) {
+    if (data.medicalHistoryAlerts.length > 0 && !data.medicalHistoryAlerts.includes('none')) {
+      const alerts = getLabels(medicalHistoryAlerts, data.medicalHistoryAlerts);
+      history += ` Medical history: ${joinList(alerts)}.`;
+    }
+    if (data.medicalHistoryComments && data.medicalHistoryComments.trim()) {
+      history += ` ${data.medicalHistoryComments.trim()}`;
+    }
   }
 
   lines.push(history || 'No history reported.');
@@ -99,112 +118,159 @@ export function generateSOAPNote(data: NoteData): string {
 
   // Chief Complaint subsection
   lines.push('Chief Complaint:');
-  let chiefComplaint = '';
 
-  // Chief complaints (now multi-select)
-  if (data.chiefComplaints.length > 0) {
-    const complaints = data.chiefComplaints.map((c) => {
-      if (c === 'other') return data.chiefComplaintCustom;
-      return getLabel(chiefComplaints, c);
-    });
-    chiefComplaint = `Patient presents with ${joinList(complaints.map((c) => c.toLowerCase()))}.`;
-  }
-
-  // Pain characteristics
-  if (data.painCharacteristics.length > 0) {
-    const chars = getLabels(painCharacteristics, data.painCharacteristics);
-    chiefComplaint += ` Reports ${joinList(chars.map((c) => c.toLowerCase()))} pain`;
-
-    if (data.painDuration) {
-      const duration = getLabel(painDurations, data.painDuration);
-      chiefComplaint += ` for ${duration.toLowerCase()}`;
+  if (!isFirstVisit) {
+    // Continuing treatment
+    lines.push('Patient presenting for continuation of treatment.');
+    if (data.continuingTreatmentComments && data.continuingTreatmentComments.trim()) {
+      lines.push(`Changes since last visit: ${data.continuingTreatmentComments.trim()}`);
     }
-    chiefComplaint += '.';
-  } else if (data.painDuration && data.painDuration !== 'na') {
-    const duration = getLabel(painDurations, data.painDuration);
-    chiefComplaint += ` Duration: ${duration}.`;
+  } else {
+    let chiefComplaint = '';
+
+    // Chief complaints (now multi-select) with grammar logic
+    if (data.chiefComplaints.length > 0) {
+      const complaints = data.chiefComplaints.map((c) => {
+        if (c === 'other') return data.chiefComplaintCustom;
+        return getLabel(chiefComplaints, c);
+      });
+
+      // Determine if we should use "presenting for" or "presents with"
+      const hasPresentingFor = data.chiefComplaints.some(c => presentingForComplaints.includes(c));
+
+      if (hasPresentingFor) {
+        chiefComplaint = `Patient presenting for ${joinList(complaints.map((c) => c.toLowerCase()))}.`;
+      } else {
+        chiefComplaint = `Patient presents with ${joinList(complaints.map((c) => c.toLowerCase()))}.`;
+      }
+    }
+
+    // Pain characteristics
+    if (data.painCharacteristics.length > 0) {
+      const chars = getLabels(painCharacteristics, data.painCharacteristics);
+      chiefComplaint += ` Reports ${joinList(chars.map((c) => c.toLowerCase()))} pain`;
+
+      if (data.painDuration) {
+        if (data.painDuration === 'other' && data.painDurationCustom) {
+          chiefComplaint += ` for ${data.painDurationCustom.toLowerCase()}`;
+        } else {
+          const duration = getLabel(painDurations, data.painDuration);
+          chiefComplaint += ` for ${duration.toLowerCase()}`;
+        }
+      }
+      chiefComplaint += '.';
+    } else if (data.painDuration && data.painDuration !== 'na') {
+      if (data.painDuration === 'other' && data.painDurationCustom) {
+        chiefComplaint += ` Duration: ${data.painDurationCustom}.`;
+      } else {
+        const duration = getLabel(painDurations, data.painDuration);
+        chiefComplaint += ` Duration: ${duration}.`;
+      }
+    }
+
+    lines.push(chiefComplaint || 'No chief complaint reported.');
   }
 
-  lines.push(chiefComplaint || 'No chief complaint reported.');
   lines.push('');
 
   // === OBJECTIVE ===
   lines.push('OBJECTIVE:');
 
-  // Vitality tests
-  const vitalityParts: string[] = [];
-  if (data.coldTest.length > 0) {
-    const coldLabels = getLabels(vitalityResults, data.coldTest);
-    vitalityParts.push(`Cold: ${joinList(coldLabels)}`);
-  }
-  if (data.eptTest.length > 0) {
-    const eptLabels = getLabels(vitalityResults, data.eptTest);
-    vitalityParts.push(`EPT: ${joinList(eptLabels)}`);
-  }
-  if (data.heatTest.length > 0) {
-    const heatLabels = getLabels(vitalityResults, data.heatTest);
-    vitalityParts.push(`Heat: ${joinList(heatLabels)}`);
-  }
-  if (vitalityParts.length > 0) {
-    lines.push(`Vitality: ${vitalityParts.join(' | ')}`);
-  }
-
-  // Clinical findings line
-  const clinicalParts: string[] = [];
-  if (data.percussion.length > 0) {
-    const percussionLabels = getLabels(percussionPalpationResults, data.percussion);
-    clinicalParts.push(`Percussion: ${joinList(percussionLabels)}`);
-  }
-  if (data.palpation.length > 0) {
-    const palpationLabels = getLabels(percussionPalpationResults, data.palpation);
-    clinicalParts.push(`Palpation: ${joinList(palpationLabels)}`);
-  }
-  if (clinicalParts.length > 0) {
-    lines.push(clinicalParts.join(' | '));
-  }
-
-  // Probing and mobility
-  const probingMobility: string[] = [];
-  if (data.probingDepths) {
-    const depths = data.probingDepths;
-    const hasValues = Object.values(depths).some(v => v && v.trim());
-    if (hasValues) {
-      const surfaceValues = ['MB', 'B', 'DB', 'DL', 'L', 'ML']
-        .map(surface => `${surface}: ${depths[surface as keyof typeof depths] || '-'}`)
-        .join(', ');
-      probingMobility.push(`Probing (mm): ${surfaceValues}`);
+  if (!isFirstVisit) {
+    // Continuing treatment - simplified objective
+    if (data.continuingTreatmentObjectiveComments && data.continuingTreatmentObjectiveComments.trim()) {
+      lines.push(data.continuingTreatmentObjectiveComments.trim());
+    } else {
+      lines.push('Continuation of previously initiated treatment.');
     }
-  }
-  if (data.mobility.length > 0) {
-    const mobilityLabels = getLabels(mobilityGrades, data.mobility);
-    probingMobility.push(`Mobility: ${joinList(mobilityLabels)}`);
-  }
-  if (probingMobility.length > 0) {
-    lines.push(probingMobility.join(' | '));
-  }
+  } else {
+    // First visit - full objective
 
-  // Swelling
-  if (data.swelling.length > 0 && !data.swelling.includes('none')) {
-    const swellingLabels = getLabels(swellingOptions, data.swelling);
-    lines.push(`Swelling: ${joinList(swellingLabels)}`);
-  }
+    // Vitality tests
+    const vitalityParts: string[] = [];
+    if (data.coldTest.length > 0) {
+      const coldLabels = getLabels(vitalityResults, data.coldTest);
+      vitalityParts.push(`Cold: ${joinList(coldLabels)}`);
+    }
+    if (data.eptTest.length > 0) {
+      const eptLabels = getLabels(vitalityResults, data.eptTest);
+      vitalityParts.push(`EPT: ${joinList(eptLabels)}`);
+    }
+    if (data.heatTest.length > 0) {
+      const heatLabels = getLabels(vitalityResults, data.heatTest);
+      vitalityParts.push(`Heat: ${joinList(heatLabels)}`);
+    }
+    if (vitalityParts.length > 0) {
+      lines.push(`Vitality: ${vitalityParts.join(' | ')}`);
+    }
 
-  // Sinus tract
-  if (data.sinusTract) {
-    lines.push('Sinus tract: Present');
-  }
+    // Vitality test comments
+    if (data.vitalityTestComments && data.vitalityTestComments.trim()) {
+      lines.push(`Vitality notes: ${data.vitalityTestComments.trim()}`);
+    }
 
-  // Radiographic findings
-  if (data.radiographicFindings.length > 0) {
-    const findings = getLabels(radiographicFindings, data.radiographicFindings);
-    lines.push(`Radiographic: ${joinList(findings)}`);
-  }
+    // Clinical findings line
+    const clinicalParts: string[] = [];
+    if (data.percussion.length > 0) {
+      const percussionLabels = getLabels(percussionPalpationResults, data.percussion);
+      clinicalParts.push(`Percussion: ${joinList(percussionLabels)}`);
+    }
+    if (data.palpation.length > 0) {
+      const palpationLabels = getLabels(percussionPalpationResults, data.palpation);
+      clinicalParts.push(`Palpation: ${joinList(palpationLabels)}`);
+    }
+    if (clinicalParts.length > 0) {
+      lines.push(clinicalParts.join(' | '));
+    }
 
-  // Objective additional comments
-  if (data.objectiveNotes && data.objectiveNotes.trim()) {
-    lines.push('');
-    lines.push('Additional Comments:');
-    lines.push(data.objectiveNotes.trim());
+    // Probing and mobility
+    const probingMobility: string[] = [];
+    if (data.probingDepths) {
+      const depths = data.probingDepths;
+      const hasValues = Object.values(depths).some(v => v && v.trim());
+      if (hasValues) {
+        const surfaceValues = ['MB', 'B', 'DB', 'DL', 'L', 'ML']
+          .map(surface => `${surface}: ${depths[surface as keyof typeof depths] || '-'}`)
+          .join(', ');
+        probingMobility.push(`Probing (mm): ${surfaceValues}`);
+      }
+    }
+    if (data.mobility.length > 0) {
+      const mobilityLabels = getLabels(mobilityGrades, data.mobility);
+      probingMobility.push(`Mobility: ${joinList(mobilityLabels)}`);
+    }
+    if (probingMobility.length > 0) {
+      lines.push(probingMobility.join(' | '));
+    }
+
+    // Swelling
+    if (data.swelling.length > 0 && !data.swelling.includes('none')) {
+      const swellingLabels = getLabels(swellingOptions, data.swelling);
+      lines.push(`Swelling: ${joinList(swellingLabels)}`);
+    }
+
+    // Sinus tract
+    if (data.sinusTract) {
+      lines.push('Sinus tract: Present');
+    }
+
+    // Radiographic findings
+    if (data.radiographicFindings.length > 0) {
+      const findings = getLabels(radiographicFindings, data.radiographicFindings);
+      lines.push(`Radiographic: ${joinList(findings)}`);
+    }
+
+    // Clinical findings comments
+    if (data.clinicalFindingsComments && data.clinicalFindingsComments.trim()) {
+      lines.push(`Clinical notes: ${data.clinicalFindingsComments.trim()}`);
+    }
+
+    // Objective additional comments
+    if (data.objectiveNotes && data.objectiveNotes.trim()) {
+      lines.push('');
+      lines.push('Additional Comments:');
+      lines.push(data.objectiveNotes.trim());
+    }
   }
 
   lines.push('');
@@ -254,6 +320,14 @@ export function generateSOAPNote(data: NoteData): string {
   if (data.treatmentOptionsOffered.length > 0) {
     const options = getLabels(treatmentOptionsOffered, data.treatmentOptionsOffered);
     lines.push(`Treatment options offered: ${joinList(options)}`);
+  }
+
+  // Treatment Comments
+  if (data.treatmentComments && data.treatmentComments.trim()) {
+    lines.push(`Treatment notes: ${data.treatmentComments.trim()}`);
+  }
+
+  if (data.treatmentOptionsOffered.length > 0 || data.treatmentComments) {
     lines.push('');
   }
 
@@ -270,20 +344,24 @@ export function generateSOAPNote(data: NoteData): string {
     lines.push('');
   }
 
-  // Anesthesia
-  if (data.anesthesiaType.length > 0 || data.anesthesiaAmount || data.anesthesiaLocations.length > 0) {
+  // Anesthesia (new format with per-type amounts)
+  const anesthesiaParts: string[] = [];
+  Object.entries(data.anesthesiaAmounts).forEach(([key, amount]) => {
+    if (amount && parseFloat(amount) > 0) {
+      const typeLabel = anesthesiaTypes.find(t => t.value === key)?.label || key;
+      anesthesiaParts.push(`${amount} carpule(s) ${typeLabel}`);
+    }
+  });
+  if (anesthesiaParts.length > 0 || data.anesthesiaLocations.length > 0) {
     let anesthesia = 'Anesthesia: ';
     const parts: string[] = [];
-    if (data.anesthesiaType.length > 0) {
-      parts.push(joinList(getLabels(anesthesiaTypes, data.anesthesiaType)));
-    }
-    if (data.anesthesiaAmount) {
-      parts.push(getLabel(anesthesiaAmounts, data.anesthesiaAmount));
+    if (anesthesiaParts.length > 0) {
+      parts.push(joinList(anesthesiaParts));
     }
     if (data.anesthesiaLocations.length > 0) {
-      parts.push(joinList(getLabels(anesthesiaLocations, data.anesthesiaLocations)));
+      parts.push(`via ${joinList(getLabels(anesthesiaLocations, data.anesthesiaLocations))}`);
     }
-    anesthesia += parts.join(', ');
+    anesthesia += parts.join(' ');
     lines.push(anesthesia);
   }
 
@@ -315,18 +393,9 @@ export function generateSOAPNote(data: NoteData): string {
     lines.push(`Canals: ${canalText}`);
   }
 
-  // Working length
-  if (data.workingLengthMethod.length > 0 || data.workingLengthMeasurements) {
-    let wl = 'Working length: ';
-    const parts: string[] = [];
-    if (data.workingLengthMethod.length > 0) {
-      parts.push(joinList(getLabels(workingLengthMethods, data.workingLengthMethod)));
-    }
-    if (data.workingLengthMeasurements) {
-      parts.push(data.workingLengthMeasurements);
-    }
-    wl += parts.join(' - ');
-    lines.push(wl);
+  // Working length method
+  if (data.workingLengthMethod.length > 0) {
+    lines.push(`Working length method: ${joinList(getLabels(workingLengthMethods, data.workingLengthMethod))}`);
   }
 
   // Per-canal Instrumentation & Obturation (only show canals that match selected configurations)
@@ -350,13 +419,22 @@ export function generateSOAPNote(data: NoteData): string {
     });
 
     const canalDetails = data.canalMAFs
-      .filter((m) => (m.fileSystem || m.size || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal))
+      .filter((m) => (m.workingLength || m.referencePoint || m.fileSystem || m.size || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal))
       .map((m) => {
         const parts: string[] = [];
 
         // Patent status
         const patentStatus = m.patent ? 'Patent' : 'Not Patent';
         parts.push(patentStatus);
+
+        // Working length and reference point
+        if (m.workingLength) {
+          let wlText = `WL: ${m.workingLength}mm`;
+          if (m.referencePoint) {
+            wlText += ` from ${m.referencePoint}`;
+          }
+          parts.push(wlText);
+        }
 
         // Instrumentation details
         const instrParts: string[] = [];
@@ -417,6 +495,11 @@ export function generateSOAPNote(data: NoteData): string {
       );
       lines.push(`Complications: ${joinList(comps)}`);
     }
+  }
+
+  // Complications comments
+  if (data.complicationsComments && data.complicationsComments.trim()) {
+    lines.push(`Complications notes: ${data.complicationsComments.trim()}`);
   }
 
   lines.push('');

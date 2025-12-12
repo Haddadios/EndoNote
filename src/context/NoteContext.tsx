@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { NoteData, Template, Preferences, ToothDiagnosis, CanalMAF } from '../types';
+import type { NoteData, Template, Preferences, ToothDiagnosis, CanalMAF, AnesthesiaAmounts } from '../types';
 import { getToothType } from '../data';
 
 // Helper to create empty tooth diagnosis
@@ -14,6 +14,17 @@ const createEmptyToothDiagnosis = (toothNumber = ''): ToothDiagnosis => ({
   recommendedTreatment: '',
 });
 
+// Initial anesthesia amounts
+const initialAnesthesiaAmounts: AnesthesiaAmounts = {
+  lidocaine_epi: '',
+  lidocaine_no_epi: '',
+  articaine_epi: '',
+  articaine_200: '',
+  carbocaine: '',
+  bupivacaine: '',
+  marcaine: '',
+};
+
 // Initial state
 const initialNoteData: NoteData = {
   // Patient/Tooth Info (for quick-select / first tooth)
@@ -21,19 +32,26 @@ const initialNoteData: NoteData = {
   toothType: 'molar',
 
   // Subjective
+  visitType: 'first_visit',
+  age: '',
+  gender: '',
   chiefComplaints: [],
   chiefComplaintCustom: '',
   painDuration: '',
+  painDurationCustom: '',
   painCharacteristics: [],
   bloodPressure: '',
   pulse: '',
   respiratoryRate: '',
   medicalHistoryAlerts: [],
+  medicalHistoryComments: '',
+  continuingTreatmentComments: '',
 
   // Objective (clinical findings only)
   coldTest: [],
   eptTest: [],
   heatTest: [],
+  vitalityTestComments: '',
   percussion: [],
   palpation: [],
   probingDepths: { MB: '', B: '', DB: '', DL: '', L: '', ML: '' },
@@ -41,7 +59,9 @@ const initialNoteData: NoteData = {
   swelling: [],
   sinusTract: false,
   radiographicFindings: [],
+  clinicalFindingsComments: '',
   objectiveNotes: '',
+  continuingTreatmentObjectiveComments: '',
 
   // Assessment - multi-tooth diagnoses
   toothDiagnoses: [createEmptyToothDiagnosis()],
@@ -49,20 +69,20 @@ const initialNoteData: NoteData = {
 
   // Plan
   treatmentOptionsOffered: [],
+  treatmentComments: '',
   consentGiven: false,
-  anesthesiaType: [],
-  anesthesiaAmount: '',
+  anesthesiaAmounts: { ...initialAnesthesiaAmounts },
   anesthesiaLocations: [],
   isolation: '',
   canalConfiguration: [],
   customCanalNames: [],
   workingLengthMethod: [],
-  workingLengthMeasurements: '',
   canalMAFs: [],
   irrigationProtocol: [],
   medicament: '',
   restoration: '',
   complications: [],
+  complicationsComments: '',
   postOpInstructions: [],
   additionalNotes: '',
   nextVisit: [],
@@ -87,7 +107,7 @@ type Action =
   | { type: 'ADD_TOOTH_DIAGNOSIS'; toothNumber?: string }
   | { type: 'UPDATE_TOOTH_DIAGNOSIS'; id: string; field: keyof ToothDiagnosis; value: string }
   | { type: 'REMOVE_TOOTH_DIAGNOSIS'; id: string }
-  | { type: 'UPDATE_CANAL_MAF'; canal: string; field: 'patent' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string | boolean }
+  | { type: 'UPDATE_CANAL_MAF'; canal: string; field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string | boolean }
   | { type: 'RESET_FORM' }
   | { type: 'LOAD_TEMPLATE'; template: Partial<NoteData> }
   | { type: 'SAVE_TEMPLATE'; template: Template }
@@ -181,6 +201,8 @@ function reducer(state: State, action: Action): State {
           {
             canal: action.canal,
             patent: false,
+            workingLength: '',
+            referencePoint: '',
             fileSystem: '',
             size: '',
             taper: '',
@@ -264,7 +286,7 @@ interface NoteContextType {
   addToothDiagnosis: (toothNumber?: string) => void;
   updateToothDiagnosis: (id: string, field: keyof ToothDiagnosis, value: string) => void;
   removeToothDiagnosis: (id: string) => void;
-  updateCanalMAF: (canal: string, field: 'patent' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => void;
+  updateCanalMAF: (canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => void;
   resetForm: () => void;
   loadTemplate: (template: Partial<NoteData>) => void;
   saveTemplate: (name: string) => void;
@@ -340,7 +362,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'REMOVE_TOOTH_DIAGNOSIS', id });
   };
 
-  const updateCanalMAF = (canal: string, field: 'patent' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => {
+  const updateCanalMAF = (canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => {
     dispatch({ type: 'UPDATE_CANAL_MAF', canal, field, value });
   };
 

@@ -5,15 +5,65 @@ import {
   painCharacteristics,
   painDurations,
   medicalHistoryAlerts,
+  genderOptions,
 } from '../../data';
 
 export function SubjectiveSection() {
   const { noteData, updateField } = useNote();
 
+  const isFirstVisit = noteData.visitType === 'first_visit';
+
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Subjective</h2>
 
+      {/* Visit Type Toggle */}
+      <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-300 dark:border-blue-700 rounded-lg">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Visit Type</span>
+          <div className="flex items-center space-x-3">
+            <span className={`text-sm font-medium ${isFirstVisit ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
+              First Visit
+            </span>
+            <button
+              type="button"
+              onClick={() => updateField('visitType', isFirstVisit ? 'continuing_treatment' : 'first_visit')}
+              className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                isFirstVisit ? 'bg-blue-600' : 'bg-green-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                  isFirstVisit ? 'translate-x-1' : 'translate-x-8'
+                }`}
+              />
+            </button>
+            <span className={`text-sm font-medium ${!isFirstVisit ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+              Continuing Treatment
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Age and Gender Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <TextInput
+          label="Age"
+          value={noteData.age}
+          onChange={(value) => updateField('age', value)}
+          placeholder="e.g., 45"
+        />
+
+        <Dropdown
+          label="Gender"
+          value={noteData.gender}
+          options={genderOptions}
+          onChange={(value) => updateField('gender', value)}
+          placeholder="Select gender..."
+        />
+      </div>
+
+      {/* Vitals Section - Always shown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <TextInput
           label="Blood Pressure"
@@ -37,46 +87,83 @@ export function SubjectiveSection() {
         />
       </div>
 
-      <CheckboxGroup
-        label="Medical History Alerts"
-        options={medicalHistoryAlerts}
-        selectedValues={noteData.medicalHistoryAlerts}
-        onChange={(values) => updateField('medicalHistoryAlerts', values)}
-        columns={2}
-      />
-
-      <CheckboxGroup
-        label="Chief Complaint(s)"
-        options={chiefComplaints}
-        selectedValues={noteData.chiefComplaints}
-        onChange={(values) => updateField('chiefComplaints', values)}
-        columns={2}
-      />
-
-      {noteData.chiefComplaints.includes('other') && (
-        <TextInput
-          label="Specify Chief Complaint"
-          value={noteData.chiefComplaintCustom}
-          onChange={(value) => updateField('chiefComplaintCustom', value)}
-          placeholder="Enter chief complaint..."
-        />
+      {/* Continuing Treatment Comments - Only shown for continuing treatment */}
+      {!isFirstVisit && (
+        <div className="mt-4">
+          <TextInput
+            label="Changes Since Last Visit"
+            value={noteData.continuingTreatmentComments}
+            onChange={(value) => updateField('continuingTreatmentComments', value)}
+            placeholder="Note any changes, symptoms, or concerns since the last visit..."
+            multiline
+            rows={3}
+          />
+        </div>
       )}
 
-      <Dropdown
-        label="Duration"
-        value={noteData.painDuration}
-        options={painDurations}
-        onChange={(value) => updateField('painDuration', value)}
-        placeholder="Select duration..."
-      />
+      {/* First Visit Content - Only shown for first visit */}
+      {isFirstVisit && (
+        <>
+          <CheckboxGroup
+            label="Medical History Alerts"
+            options={medicalHistoryAlerts}
+            selectedValues={noteData.medicalHistoryAlerts}
+            onChange={(values) => updateField('medicalHistoryAlerts', values)}
+            columns={2}
+          />
 
-      <CheckboxGroup
-        label="Pain Characteristics"
-        options={painCharacteristics}
-        selectedValues={noteData.painCharacteristics}
-        onChange={(values) => updateField('painCharacteristics', values)}
-        columns={2}
-      />
+          <TextInput
+            label="Medical History Comments"
+            value={noteData.medicalHistoryComments}
+            onChange={(value) => updateField('medicalHistoryComments', value)}
+            placeholder="Additional medical history notes..."
+            multiline
+            rows={2}
+          />
+
+          <CheckboxGroup
+            label="Chief Complaint(s)"
+            options={chiefComplaints}
+            selectedValues={noteData.chiefComplaints}
+            onChange={(values) => updateField('chiefComplaints', values)}
+            columns={2}
+          />
+
+          {noteData.chiefComplaints.includes('other') && (
+            <TextInput
+              label="Specify Chief Complaint"
+              value={noteData.chiefComplaintCustom}
+              onChange={(value) => updateField('chiefComplaintCustom', value)}
+              placeholder="Enter chief complaint..."
+            />
+          )}
+
+          <Dropdown
+            label="Duration"
+            value={noteData.painDuration}
+            options={painDurations}
+            onChange={(value) => updateField('painDuration', value)}
+            placeholder="Select duration..."
+          />
+
+          {noteData.painDuration === 'other' && (
+            <TextInput
+              label="Specify Duration"
+              value={noteData.painDurationCustom}
+              onChange={(value) => updateField('painDurationCustom', value)}
+              placeholder="Enter specific duration..."
+            />
+          )}
+
+          <CheckboxGroup
+            label="Pain Characteristics"
+            options={painCharacteristics}
+            selectedValues={noteData.painCharacteristics}
+            onChange={(values) => updateField('painCharacteristics', values)}
+            columns={2}
+          />
+        </>
+      )}
     </div>
   );
 }

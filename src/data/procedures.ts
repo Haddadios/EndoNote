@@ -112,5 +112,4 @@ export const treatmentOptionsOffered: SelectOption[] = [
   { value: 'apical_microsurgery', label: 'Apical Microsurgery' },
   { value: 'extraction', label: 'Extraction' },
   { value: 'no_treatment', label: 'No Treatment' },
-  { value: 'other', label: 'Other' },
 ];

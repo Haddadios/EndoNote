@@ -54,6 +54,15 @@ export const painDurations: SelectOption[] = [
   { value: 'chronic', label: 'Chronic (>3 months)' },
   { value: 'unknown', label: 'Unknown/vague' },
   { value: 'na', label: 'N/A - asymptomatic' },
+  { value: 'other', label: 'Other' },
+];
+
+// Gender Options
+export const genderOptions: SelectOption[] = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
+  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ];
 
 // Medical History Alerts

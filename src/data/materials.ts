@@ -38,7 +38,8 @@ export const anesthesiaAmounts: SelectOption[] = [
 ];
 
 export const anesthesiaLocations: SelectOption[] = [
-  { value: 'infiltration', label: 'Local infiltration' },
+  { value: 'buccal_infiltration', label: 'Buccal infiltration' },
+  { value: 'lingual_palatal_infiltration', label: 'Lingual/Palatal infiltration' },
   { value: 'ian_block', label: 'IAN block' },
   { value: 'psa', label: 'PSA block' },
   { value: 'msa', label: 'MSA block' },
@@ -66,8 +67,6 @@ export const isolationMethods: SelectOption[] = [
 export const workingLengthMethods: SelectOption[] = [
   { value: 'apex_locator', label: 'Apex locator' },
   { value: 'radiographic', label: 'Radiographic' },
-  { value: 'tactile', label: 'Tactile' },
-  { value: 'paper_point', label: 'Paper point' },
 ];
 
 // Instrumentation Systems (updated: removed Profile, GT Files, added Edge X7, Edge One)
@@ -135,6 +134,7 @@ export const irrigationSolutions: SelectOption[] = [
   { value: 'qmix', label: 'QMix' },
   { value: 'mtad', label: 'MTAD' },
   { value: 'citric_acid', label: 'Citric acid' },
+  { value: 'c_solution', label: 'C-solution' },
 ];
 
 export const irrigationTechniques: SelectOption[] = [

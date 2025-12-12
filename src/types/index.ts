@@ -32,6 +32,8 @@ export interface ToothDiagnosis {
 export interface CanalMAF {
   canal: string;
   patent: boolean;
+  workingLength: string;
+  referencePoint: string;
   fileSystem: string;
   size: string;
   taper: string;
@@ -39,6 +41,18 @@ export interface CanalMAF {
   obturationMaterial: string;
   obturationSealer: string;
 }
+
+export interface AnesthesiaAmounts {
+  lidocaine_epi: string;
+  lidocaine_no_epi: string;
+  articaine_epi: string;
+  articaine_200: string;
+  carbocaine: string;
+  bupivacaine: string;
+  marcaine: string;
+}
+
+export type VisitType = 'first_visit' | 'continuing_treatment';
 
 export interface ProbingDepths {
   MB: string; // Mesio-Buccal
@@ -55,19 +69,26 @@ export interface NoteData {
   toothType: ToothType;
 
   // Subjective
+  visitType: VisitType;
+  age: string;
+  gender: string;
   chiefComplaints: string[];
   chiefComplaintCustom: string;
   painDuration: string;
+  painDurationCustom: string;
   painCharacteristics: string[];
   bloodPressure: string;
   pulse: string;
   respiratoryRate: string;
   medicalHistoryAlerts: string[];
+  medicalHistoryComments: string;
+  continuingTreatmentComments: string;
 
   // Objective (clinical findings only, diagnoses moved to assessment)
   coldTest: string[];
   eptTest: string[];
   heatTest: string[];
+  vitalityTestComments: string;
   percussion: string[];
   palpation: string[];
   probingDepths: ProbingDepths;
@@ -75,7 +96,9 @@ export interface NoteData {
   swelling: string[];
   sinusTract: boolean;
   radiographicFindings: string[];
+  clinicalFindingsComments: string;
   objectiveNotes: string;
+  continuingTreatmentObjectiveComments: string;
 
   // Assessment - multi-tooth diagnoses
   toothDiagnoses: ToothDiagnosis[];
@@ -83,20 +106,20 @@ export interface NoteData {
 
   // Plan
   treatmentOptionsOffered: string[];
+  treatmentComments: string;
   consentGiven: boolean;
-  anesthesiaType: string[];
-  anesthesiaAmount: string;
+  anesthesiaAmounts: AnesthesiaAmounts;
   anesthesiaLocations: string[];
   isolation: string;
   canalConfiguration: string[];
   customCanalNames: string[];
   workingLengthMethod: string[];
-  workingLengthMeasurements: string;
   canalMAFs: CanalMAF[];
   irrigationProtocol: string[];
   medicament: string;
   restoration: string;
   complications: string[];
+  complicationsComments: string;
   postOpInstructions: string[];
   additionalNotes: string;
   nextVisit: string[];
