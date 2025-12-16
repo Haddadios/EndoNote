@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNote } from '../../context/NoteContext';
 import { Dropdown, Odontogram } from '../common';
 import {
@@ -89,8 +90,15 @@ function ToothDiagnosisEntry({
 }
 
 export function AssessmentSection() {
-  const { noteData, preferences, updateField, addToothDiagnosis, updateToothDiagnosis, removeToothDiagnosis } =
-    useNote();
+  const {
+    noteData,
+    preferences,
+    updateField,
+    addToothDiagnosis,
+    updateToothDiagnosis,
+    removeToothDiagnosis,
+    updateTooth,
+  } = useNote();
 
   const teethOptions = preferences.toothNotation === 'universal' ? universalTeeth : fdiTeeth;
 
@@ -107,9 +115,12 @@ export function AssessmentSection() {
       // Clicking same tooth again - deselect it (toggle off)
       if (noteData.toothDiagnoses.length > 1) {
         removeToothDiagnosis(existingDiagnosis.id);
+        const remaining = noteData.toothDiagnoses.find((d) => d.toothNumber && d.id !== existingDiagnosis.id);
+        updateTooth(remaining?.toothNumber || '');
       } else {
         // If it's the only diagnosis, just clear the tooth number instead of removing
         updateToothDiagnosis(existingDiagnosis.id, 'toothNumber', '');
+        updateTooth('');
       }
     } else {
       // Clicking a different tooth - add it to selection
@@ -122,8 +133,18 @@ export function AssessmentSection() {
         // No empty slots, add a new diagnosis entry with the tooth number
         addToothDiagnosis(toothNumber);
       }
+
+      updateTooth(toothNumber);
     }
   };
+
+  // If no primary tooth is set, mirror from first diagnosis so outputs stay consistent
+  useEffect(() => {
+    const firstTooth = noteData.toothDiagnoses.find((d) => d.toothNumber)?.toothNumber || '';
+    if (firstTooth && noteData.toothNumber !== firstTooth) {
+      updateTooth(firstTooth);
+    }
+  }, [noteData.toothDiagnoses, noteData.toothNumber, updateTooth]);
 
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">

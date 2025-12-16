@@ -5,8 +5,9 @@ import {
   ObjectiveSection,
   AssessmentSection,
   PlanSection,
+  ReferralSection,
 } from './components/forms';
-import { NoteOutput, TemplateManager } from './components/output';
+import { NoteOutput, ReferralLetterOutput, TemplateManager } from './components/output';
 
 function App() {
   return (
@@ -25,12 +26,12 @@ function App() {
             </div>
 
             {/* Right Column - Output and Templates (1/3 width) */}
-            <div className="lg:col-span-1 space-y-6">
-              <div className="lg:sticky lg:top-8">
+            <div className="lg:col-span-1">
+              <div className="lg:sticky lg:top-8 space-y-6">
                 <NoteOutput />
-                <div className="mt-6">
-                  <TemplateManager />
-                </div>
+                <ReferralSection />
+                <ReferralLetterOutput />
+                <TemplateManager />
               </div>
             </div>
           </div>

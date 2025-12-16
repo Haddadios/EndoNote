@@ -67,6 +67,9 @@ export interface NoteData {
   // Patient/Tooth Info (for quick-select / first tooth)
   toothNumber: string;
   toothType: ToothType;
+  patientName: string;
+  patientChartNumber: string;
+  patientDOB: string;
 
   // Subjective
   visitType: VisitType;
@@ -103,6 +106,14 @@ export interface NoteData {
   // Assessment - multi-tooth diagnoses
   toothDiagnoses: ToothDiagnosis[];
   assessmentNotes: string;
+
+  // Referral Letter
+  referralLetterDate: string;
+  consultationDate: string;
+  treatmentCompletionDate: string;
+  treatmentPerformed: string;
+  temporizedWith: string;
+  referralComments: string;
 
   // Plan
   treatmentOptionsOffered: string[];

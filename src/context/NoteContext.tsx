@@ -30,6 +30,9 @@ const initialNoteData: NoteData = {
   // Patient/Tooth Info (for quick-select / first tooth)
   toothNumber: '',
   toothType: 'molar',
+  patientName: '',
+  patientChartNumber: '',
+  patientDOB: '',
 
   // Subjective
   visitType: 'first_visit',
@@ -66,6 +69,14 @@ const initialNoteData: NoteData = {
   // Assessment - multi-tooth diagnoses
   toothDiagnoses: [createEmptyToothDiagnosis()],
   assessmentNotes: '',
+
+  // Referral Letter
+  referralLetterDate: '',
+  consultationDate: '',
+  treatmentCompletionDate: '',
+  treatmentPerformed: '',
+  temporizedWith: '',
+  referralComments: '',
 
   // Plan
   treatmentOptionsOffered: [],

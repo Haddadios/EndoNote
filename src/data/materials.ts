@@ -130,6 +130,7 @@ export const irrigationSolutions: SelectOption[] = [
   { value: 'naocl_1', label: 'NaOCl 1%' },
   { value: 'edta_17', label: 'EDTA 17%' },
   { value: 'chx_2', label: 'CHX 2%' },
+  { value: 'triton', label: 'Triton' },
   { value: 'saline', label: 'Sterile saline' },
   { value: 'qmix', label: 'QMix' },
   { value: 'mtad', label: 'MTAD' },

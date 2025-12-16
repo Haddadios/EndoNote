@@ -3,6 +3,7 @@ interface TextInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  type?: 'text' | 'date';
   required?: boolean;
   disabled?: boolean;
   multiline?: boolean;
@@ -14,6 +15,7 @@ export function TextInput({
   value,
   onChange,
   placeholder = '',
+  type = 'text',
   required = false,
   disabled = false,
   multiline = false,
@@ -39,7 +41,7 @@ export function TextInput({
         />
       ) : (
         <input
-          type="text"
+          type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
