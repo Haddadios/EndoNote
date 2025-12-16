@@ -148,6 +148,6 @@ export function generateReferralLetter(noteData: NoteData) {
     '',
     'Sincerely,',
     '',
-    noteData.patientName ? `${noteData.patientName} care team` : 'Endodontic Care Team',
+    noteData.patientName ? `${noteData.patientName} care team` : 'Dr. ',
   ].join('\n');
 }
