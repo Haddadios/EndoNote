@@ -145,9 +145,5 @@ export function generateReferralLetter(noteData: NoteData) {
     `  ${comments}`,
     '',
     'Thank you for your kind referral and the opportunity to manage this patient, and please do not hesitate to reach out should you have any further questions.',
-    '',
-    'Sincerely,',
-    '',
-    noteData.patientName ? `${noteData.patientName} care team` : 'Dr. ',
   ].join('\n');
 }
