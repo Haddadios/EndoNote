@@ -136,8 +136,6 @@ export function generateReferralLetter(noteData: NoteData) {
     `Treatment Completion Date: ${completionDate}`,
     `  Treatment Performed: ${treatmentPerformed}`,
     `  ${canalLine}`,
-    obturatedWith ? `  Obturation Material(s): ${obturatedWith}` : '',
-    obturationSealer ? `  Sealer(s): ${obturationSealer}` : '',
     `  Temporized/Restored with: ${temporizedWith}`,
     `  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`,
     '',

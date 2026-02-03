@@ -1,6 +1,5 @@
 import { useNote } from '../../context/NoteContext';
-import { Dropdown, TextInput } from '../common';
-import { treatmentTypes } from '../../data';
+import { TextInput } from '../common';
 
 export function ReferralSection() {
   const { noteData, updateField } = useNote();
@@ -51,16 +50,6 @@ export function ReferralSection() {
           value={noteData.treatmentCompletionDate}
           onChange={(value) => updateField('treatmentCompletionDate', value)}
           type="date"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Dropdown
-          label="Treatment Performed"
-          value={noteData.treatmentPerformed}
-          options={treatmentTypes}
-          onChange={(value) => updateField('treatmentPerformed', value)}
-          placeholder="Select treatment performed..."
         />
       </div>
 

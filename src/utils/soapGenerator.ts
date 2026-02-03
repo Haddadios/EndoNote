@@ -346,10 +346,12 @@ export function generateSOAPNote(data: NoteData): string {
 
   // Anesthesia (new format with per-type amounts)
   const anesthesiaParts: string[] = [];
+  const usedAnestheticKeys: string[] = [];
   Object.entries(data.anesthesiaAmounts).forEach(([key, amount]) => {
     if (amount && parseFloat(amount) > 0) {
       const typeLabel = anesthesiaTypes.find(t => t.value === key)?.label || key;
       anesthesiaParts.push(`${amount} carpule(s) ${typeLabel}`);
+      usedAnestheticKeys.push(key);
     }
   });
   if (anesthesiaParts.length > 0 || data.anesthesiaLocations.length > 0) {
@@ -359,7 +361,43 @@ export function generateSOAPNote(data: NoteData): string {
       parts.push(joinList(anesthesiaParts));
     }
     if (data.anesthesiaLocations.length > 0) {
-      parts.push(`via ${joinList(getLabels(anesthesiaLocations, data.anesthesiaLocations))}`);
+      // Check if we have multiple anesthetics and location mapping
+      const hasMultipleAnesthetics = usedAnestheticKeys.length > 1;
+      const locationParts = data.anesthesiaLocations.map((loc) => {
+        let locationLabel = getLabel(anesthesiaLocations, loc);
+
+        // Add side information if available
+        if (data.anesthesiaLocationSides && data.anesthesiaLocationSides[loc]) {
+          const side = data.anesthesiaLocationSides[loc];
+          const sideLabel = side === 'rhs' ? 'RHS' : side === 'lhs' ? 'LHS' : 'bilateral';
+          locationLabel = `${locationLabel} (${sideLabel})`;
+        }
+
+        if (hasMultipleAnesthetics && data.anesthesiaLocationMapping && data.anesthesiaLocationMapping[loc]) {
+          const anestheticsForLocation = data.anesthesiaLocationMapping[loc]
+            .map((aKey) => {
+              const aType = anesthesiaTypes.find(t => t.value === aKey);
+              // Return short label (e.g., "Lidocaine 2%" instead of full label)
+              if (aType) {
+                const shortLabel = aType.label.split(' w/')[0]; // Take part before " w/"
+                return shortLabel;
+              }
+              return aKey;
+            })
+            .filter(Boolean);
+          if (anestheticsForLocation.length > 0) {
+            // If we already have side info in locationLabel, append anesthetics
+            if (data.anesthesiaLocationSides && data.anesthesiaLocationSides[loc]) {
+              // Remove the closing paren and append anesthetic info
+              locationLabel = locationLabel.slice(0, -1) + `, ${anestheticsForLocation.join(', ')})`;
+            } else {
+              locationLabel = `${locationLabel} (${anestheticsForLocation.join(', ')})`;
+            }
+          }
+        }
+        return locationLabel;
+      });
+      parts.push(`via ${joinList(locationParts)}`);
     }
     anesthesia += parts.join(' ');
     lines.push(anesthesia);

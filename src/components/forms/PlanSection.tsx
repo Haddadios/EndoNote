@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNote } from '../../context/NoteContext';
 import { Dropdown, CheckboxGroup, TextInput } from '../common';
 import type { AnesthesiaAmounts } from '../../types';
@@ -28,6 +29,7 @@ import {
 
 export function PlanSection() {
   const { noteData, updateField, updateCanalMAF } = useNote();
+  const [hasComplications, setHasComplications] = useState(false);
 
   // Get canal names based on selected configuration
   const getSelectedCanals = (): string[] => {
@@ -62,6 +64,24 @@ export function PlanSection() {
     ...irrigationTechniques.map((t) => ({ ...t, value: `tech_${t.value}` })),
   ];
 
+  // Split irrigation options into main and more options
+  const mainIrrigationItems = [
+    'naocl_4',
+    'edta_17',
+    'tech_manual_agitation',
+    'tech_pui',
+    'c_solution',
+    'tech_endoactivator',
+  ];
+
+  const irrigationMainOptions = irrigationOptions.filter((opt) =>
+    mainIrrigationItems.includes(opt.value)
+  );
+
+  const irrigationMoreOptions = irrigationOptions.filter(
+    (opt) => !mainIrrigationItems.includes(opt.value)
+  );
+
   // Get MAF for a specific canal
   const getCanalMAF = (canal: string) => {
     return noteData.canalMAFs.find((m) => m.canal === canal) || {
@@ -83,6 +103,90 @@ export function PlanSection() {
     updateField('anesthesiaAmounts', {
       ...noteData.anesthesiaAmounts,
       [key]: value
+    });
+  };
+
+  // Get list of anesthetics that are being used (amount > 0)
+  const getUsedAnesthetics = (): { value: string; label: string }[] => {
+    return anesthesiaTypes.filter((type) => {
+      const key = type.value as keyof AnesthesiaAmounts;
+      const amount = noteData.anesthesiaAmounts[key];
+      return amount && parseFloat(amount) > 0;
+    });
+  };
+
+  const usedAnesthetics = getUsedAnesthetics();
+  const multipleAnestheticsUsed = usedAnesthetics.length > 1;
+
+  // Define bilateral locations that need RHS/LHS toggle
+  const bilateralLocations = [
+    'ian_block',
+    'gow_gates',
+    'akinosi',
+    'mental',
+    'asa',
+    'psa',
+    'msa',
+    'greater_palatine',
+  ];
+
+  // Handle location toggle
+  const handleLocationToggle = (locationValue: string) => {
+    if (noteData.anesthesiaLocations.includes(locationValue)) {
+      // Remove location
+      updateField('anesthesiaLocations', noteData.anesthesiaLocations.filter((v) => v !== locationValue));
+      // Remove from mapping
+      const newMapping = { ...noteData.anesthesiaLocationMapping };
+      delete newMapping[locationValue];
+      updateField('anesthesiaLocationMapping', newMapping);
+      // Remove from sides
+      const newSides = { ...noteData.anesthesiaLocationSides };
+      delete newSides[locationValue];
+      updateField('anesthesiaLocationSides', newSides);
+    } else {
+      // Add location
+      updateField('anesthesiaLocations', [...noteData.anesthesiaLocations, locationValue]);
+      // Initialize mapping with all used anesthetics if multiple are used
+      if (multipleAnestheticsUsed) {
+        updateField('anesthesiaLocationMapping', {
+          ...noteData.anesthesiaLocationMapping,
+          [locationValue]: usedAnesthetics.map((a) => a.value),
+        });
+      }
+      // Initialize side for bilateral locations
+      if (bilateralLocations.includes(locationValue)) {
+        updateField('anesthesiaLocationSides', {
+          ...noteData.anesthesiaLocationSides,
+          [locationValue]: 'rhs',
+        });
+      }
+    }
+  };
+
+  // Handle side toggle for bilateral locations
+  const handleLocationSideToggle = (locationValue: string, side: string) => {
+    updateField('anesthesiaLocationSides', {
+      ...noteData.anesthesiaLocationSides,
+      [locationValue]: side,
+    });
+  };
+
+  // Handle anesthetic toggle for a specific location
+  const handleLocationAnestheticToggle = (locationValue: string, anestheticValue: string) => {
+    const currentAnesthetics = noteData.anesthesiaLocationMapping[locationValue] || [];
+    let newAnesthetics: string[];
+
+    if (currentAnesthetics.includes(anestheticValue)) {
+      // Remove anesthetic
+      newAnesthetics = currentAnesthetics.filter((a) => a !== anestheticValue);
+    } else {
+      // Add anesthetic
+      newAnesthetics = [...currentAnesthetics, anestheticValue];
+    }
+
+    updateField('anesthesiaLocationMapping', {
+      ...noteData.anesthesiaLocationMapping,
+      [locationValue]: newAnesthetics,
     });
   };
 
@@ -153,13 +257,97 @@ export function PlanSection() {
         </div>
       </div>
 
-      <CheckboxGroup
-        label="Location/Technique"
-        options={anesthesiaLocations}
-        selectedValues={noteData.anesthesiaLocations}
-        onChange={(values) => updateField('anesthesiaLocations', values)}
-        columns={2}
-      />
+      {/* Anesthesia Location/Technique */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Location/Technique
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {anesthesiaLocations.map((location) => {
+            const isSelected = noteData.anesthesiaLocations.includes(location.value);
+            const locationAnesthetics = noteData.anesthesiaLocationMapping[location.value] || [];
+            const isBilateral = bilateralLocations.includes(location.value);
+            const locationSide = noteData.anesthesiaLocationSides[location.value] || 'rhs';
+
+            return (
+              <div key={location.value} className="flex flex-col">
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleLocationToggle(location.value)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{location.label}</span>
+                </label>
+
+                {/* Show RHS/LHS toggle for bilateral locations */}
+                {isSelected && isBilateral && (
+                  <div className="ml-6 mt-1 flex items-center gap-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Side:</span>
+                    <button
+                      type="button"
+                      onClick={() => handleLocationSideToggle(location.value, 'rhs')}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-all ${
+                        locationSide === 'rhs'
+                          ? 'bg-purple-600 text-white shadow-md'
+                          : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-500'
+                      }`}
+                    >
+                      RHS
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLocationSideToggle(location.value, 'lhs')}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-all ${
+                        locationSide === 'lhs'
+                          ? 'bg-purple-600 text-white shadow-md'
+                          : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-500'
+                      }`}
+                    >
+                      LHS
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLocationSideToggle(location.value, 'bilateral')}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-all ${
+                        locationSide === 'bilateral'
+                          ? 'bg-purple-600 text-white shadow-md'
+                          : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-500'
+                      }`}
+                    >
+                      Both
+                    </button>
+                  </div>
+                )}
+
+                {/* Show anesthetic checkboxes if location is selected and multiple anesthetics are used */}
+                {isSelected && multipleAnestheticsUsed && (
+                  <div className="ml-6 mt-1 space-y-1 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                    <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      Anesthetic(s) used:
+                    </div>
+                    {usedAnesthetics.map((anesthetic) => (
+                      <label
+                        key={anesthetic.value}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={locationAnesthetics.includes(anesthetic.value)}
+                          onChange={() => handleLocationAnestheticToggle(location.value, anesthetic.value)}
+                          className="w-3 h-3 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-xs text-gray-700 dark:text-gray-300">{anesthetic.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Isolation */}
       <Dropdown
@@ -409,7 +597,8 @@ export function PlanSection() {
       {/* Irrigation */}
       <CheckboxGroup
         label="Irrigation Protocol"
-        options={irrigationOptions}
+        mainOptions={irrigationMainOptions}
+        moreOptions={irrigationMoreOptions}
         selectedValues={noteData.irrigationProtocol}
         onChange={(values) => updateField('irrigationProtocol', values)}
         columns={2}
@@ -434,22 +623,64 @@ export function PlanSection() {
       />
 
       {/* Complications */}
-      <CheckboxGroup
-        label="Complications"
-        options={complications}
-        selectedValues={noteData.complications}
-        onChange={(values) => updateField('complications', values)}
-        columns={2}
-      />
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Complications
+        </label>
+        <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+          <span className="text-sm text-gray-700 dark:text-gray-300 mr-2">Were there any complications?</span>
+          <button
+            type="button"
+            onClick={() => {
+              setHasComplications(true);
+            }}
+            className={`px-4 py-2 text-sm font-medium rounded transition-all ${
+              hasComplications
+                ? 'bg-red-600 text-white shadow-md'
+                : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-500'
+            }`}
+          >
+            Yes
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setHasComplications(false);
+              // Clear complications when set to No
+              updateField('complications', []);
+              updateField('complicationsComments', '');
+            }}
+            className={`px-4 py-2 text-sm font-medium rounded transition-all ${
+              !hasComplications
+                ? 'bg-green-600 text-white shadow-md'
+                : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-500'
+            }`}
+          >
+            No
+          </button>
+        </div>
+      </div>
 
-      <TextInput
-        label="Complications Comments"
-        value={noteData.complicationsComments}
-        onChange={(value) => updateField('complicationsComments', value)}
-        placeholder="Additional details about complications..."
-        multiline
-        rows={2}
-      />
+      {hasComplications && (
+        <>
+          <CheckboxGroup
+            label="Select Complications"
+            options={complications}
+            selectedValues={noteData.complications}
+            onChange={(values) => updateField('complications', values)}
+            columns={2}
+          />
+
+          <TextInput
+            label="Complications Comments"
+            value={noteData.complicationsComments}
+            onChange={(value) => updateField('complicationsComments', value)}
+            placeholder="Additional details about complications..."
+            multiline
+            rows={2}
+          />
+        </>
+      )}
 
       {/* Post-op Instructions */}
       <CheckboxGroup

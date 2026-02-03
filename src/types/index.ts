@@ -121,6 +121,8 @@ export interface NoteData {
   consentGiven: boolean;
   anesthesiaAmounts: AnesthesiaAmounts;
   anesthesiaLocations: string[];
+  anesthesiaLocationMapping: Record<string, string[]>; // maps location to array of anesthetic types
+  anesthesiaLocationSides: Record<string, string>; // maps location to 'rhs' | 'lhs' | 'bilateral'
   isolation: string;
   canalConfiguration: string[];
   customCanalNames: string[];

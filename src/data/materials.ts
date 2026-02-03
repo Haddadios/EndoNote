@@ -172,11 +172,14 @@ export const obturationMaterials: SelectOption[] = [
   { value: 'gp_sealer', label: 'Gutta-percha + Sealer' },
   { value: 'mta_obturation', label: 'MTA Obturation' },
   { value: 'gp_sealer_mta', label: 'Gutta-percha + Sealer & MTA Obturation' },
+  { value: 'gp_sealer_mta_plug', label: 'Gutta-percha + Sealer With MTA Apical Plug' }
 ];
 
 // Obturation Sealers
 export const obturationSealers: SelectOption[] = [
-  { value: 'thermaseal', label: 'Thermaseal/AH Plus/Ribbon' },
+  { value: 'thermaseal', label: 'Thermaseal' },
+  { value: 'ahplus', label: 'AHPlus' },
+  { value: 'ribbon', label: 'Ribbon' },
   { value: 'ah26', label: 'AH26' },
   { value: 'bc_sealer', label: 'Bioceramic Sealer' },
   { value: 'bc_sealer_hiflow', label: 'Bioceramic Sealer Hi-Flow' },

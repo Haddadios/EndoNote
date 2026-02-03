@@ -84,6 +84,8 @@ const initialNoteData: NoteData = {
   consentGiven: false,
   anesthesiaAmounts: { ...initialAnesthesiaAmounts },
   anesthesiaLocations: [],
+  anesthesiaLocationMapping: {},
+  anesthesiaLocationSides: {},
   isolation: '',
   canalConfiguration: [],
   customCanalNames: [],

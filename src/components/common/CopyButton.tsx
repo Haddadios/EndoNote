@@ -2,15 +2,32 @@ import { useState } from 'react';
 
 interface CopyButtonProps {
   text: string;
+  html?: string;
   className?: string;
 }
 
-export function CopyButton({ text, className = '' }: CopyButtonProps) {
+export function CopyButton({ text, html, className = '' }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(text);
+      if (
+        html &&
+        typeof ClipboardItem !== 'undefined' &&
+        navigator.clipboard &&
+        'write' in navigator.clipboard
+      ) {
+        const htmlBlob = new Blob([html], { type: 'text/html' });
+        const textBlob = new Blob([text], { type: 'text/plain' });
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': htmlBlob,
+            'text/plain': textBlob,
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
