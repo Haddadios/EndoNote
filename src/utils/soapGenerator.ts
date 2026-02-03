@@ -145,20 +145,48 @@ export function generateSOAPNote(data: NoteData): string {
       }
     }
 
-    // Pain characteristics
+    // Pain characteristics - structured sentence
     if (data.painCharacteristics.length > 0) {
-      const chars = getLabels(painCharacteristics, data.painCharacteristics);
-      chiefComplaint += ` Reports ${joinList(chars.map((c) => c.toLowerCase()))} pain`;
+      const selectedValues = data.painCharacteristics;
+      const findFirstValue = (candidates: string[]) => selectedValues.find((v) => candidates.includes(v));
+      const valueToLabel = (value?: string) =>
+        value ? getLabel(painCharacteristics, value).toLowerCase() : undefined;
 
-      if (data.painDuration) {
-        if (data.painDuration === 'other' && data.painDurationCustom) {
-          chiefComplaint += ` for ${data.painDurationCustom.toLowerCase()}`;
-        } else {
-          const duration = getLabel(painDurations, data.painDuration);
-          chiefComplaint += ` for ${duration.toLowerCase()}`;
-        }
+      const char = valueToLabel(findFirstValue(['sharp', 'dull', 'throbbing'])) || 'pain';
+      const onset = valueToLabel(findFirstValue(['spontaneous', 'provoked', 'wakes_from_sleep']));
+      const loc = valueToLabel(findFirstValue(['localized', 'radiating', 'diffuse']));
+      const dur = valueToLabel(findFirstValue(['constant', 'intermittent', 'lingering']));
+      const severity = valueToLabel(findFirstValue(['mild', 'moderate', 'severe']));
+      const pattern = valueToLabel(findFirstValue(['worse_lying_down', 'relieved_cold', 'relieved_heat']));
+      const assoc = valueToLabel(findFirstValue(['relieved_analgesics', 'not_relieved_analgesics']));
+
+      const historyValue = findFirstValue([
+        'few_days',
+        '1_week',
+        'several_weeks',
+        '1_month',
+        'several_months',
+        'unknown_history',
+        'asymptomatic',
+        'history_other',
+      ]);
+
+      let historyLabel = valueToLabel(historyValue);
+      if (historyValue === 'history_other' && data.painHistoryOther?.trim()) {
+        historyLabel = data.painHistoryOther.trim().toLowerCase();
       }
-      chiefComplaint += '.';
+
+      const parts: string[] = [];
+      parts.push(char);
+      if (onset) parts.push(onset);
+      if (loc) parts.push(loc);
+      if (dur) parts.push(dur);
+      if (severity) parts.push(severity);
+      if (pattern) parts.push(pattern);
+      if (assoc) parts.push(assoc);
+
+      const historyText = historyLabel ? ` that has been around for ${historyLabel}` : '';
+      chiefComplaint += ` Reports ${joinList(parts)} pain${historyText}.`;
     } else if (data.painDuration && data.painDuration !== 'na') {
       if (data.painDuration === 'other' && data.painDurationCustom) {
         chiefComplaint += ` Duration: ${data.painDurationCustom}.`;

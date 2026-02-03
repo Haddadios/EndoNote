@@ -1,8 +1,8 @@
-import type { SelectOption } from '../types';
+import type { SelectOption, SelectOptionGroup } from '../types';
 
 // Chief Complaints
 export const chiefComplaints: SelectOption[] = [
-  { value: 'pain', label: 'Pain/toothache' },
+  { value: 'pain', label: 'Pain' },
   { value: 'swelling', label: 'Swelling' },
   { value: 'sensitivity_cold', label: 'Sensitivity to cold' },
   { value: 'sensitivity_hot', label: 'Sensitivity to hot' },
@@ -21,26 +21,107 @@ export const chiefComplaints: SelectOption[] = [
 
 // Pain Characteristics
 export const painCharacteristics: SelectOption[] = [
-  { value: 'spontaneous', label: 'Spontaneous' },
-  { value: 'provoked', label: 'Provoked' },
-  { value: 'constant', label: 'Constant' },
-  { value: 'intermittent', label: 'Intermittent' },
   { value: 'sharp', label: 'Sharp' },
   { value: 'dull', label: 'Dull/aching' },
   { value: 'throbbing', label: 'Throbbing' },
-  { value: 'radiating', label: 'Radiating' },
+  { value: 'spontaneous', label: 'Spontaneous' },
+  { value: 'provoked', label: 'Provoked' },
+  { value: 'wakes_from_sleep', label: 'Wakes from sleep' },
   { value: 'localized', label: 'Localized' },
+  { value: 'radiating', label: 'Radiating' },
   { value: 'diffuse', label: 'Diffuse' },
+  { value: 'constant', label: 'Constant' },
+  { value: 'intermittent', label: 'Intermittent' },
+  { value: 'lingering', label: 'Lingering after stimulus removed' },
   { value: 'mild', label: 'Mild' },
   { value: 'moderate', label: 'Moderate' },
   { value: 'severe', label: 'Severe' },
-  { value: 'wakes_from_sleep', label: 'Wakes from sleep' },
   { value: 'worse_lying_down', label: 'Worse when lying down' },
   { value: 'relieved_cold', label: 'Relieved by cold' },
   { value: 'relieved_heat', label: 'Relieved by heat' },
   { value: 'relieved_analgesics', label: 'Relieved by analgesics' },
   { value: 'not_relieved_analgesics', label: 'Not relieved by analgesics' },
-  { value: 'lingering', label: 'Lingering after stimulus removed' },
+  { value: 'few_days', label: 'Few days' },
+  { value: '1_week', label: '1 week' },
+  { value: 'several_weeks', label: 'Several weeks' },
+  { value: '1_month', label: '1 month' },
+  { value: 'several_months', label: 'Several months' },
+  { value: 'unknown_history', label: 'Unknown' },
+  { value: 'asymptomatic', label: 'Asymptomatic' },
+  { value: 'history_other', label: 'Other' },
+];
+
+export const painCharacteristicGroups: SelectOptionGroup[] = [
+  {
+    label: 'Character',
+    options: [
+      { value: 'sharp', label: 'Sharp' },
+      { value: 'dull', label: 'Dull/aching' },
+      { value: 'throbbing', label: 'Throbbing' },
+    ],
+  },
+  {
+    label: 'Onset',
+    options: [
+      { value: 'spontaneous', label: 'Spontaneous' },
+      { value: 'provoked', label: 'Provoked' },
+      { value: 'wakes_from_sleep', label: 'Wakes from sleep' },
+    ],
+  },
+  {
+    label: 'Location',
+    options: [
+      { value: 'localized', label: 'Localized' },
+      { value: 'radiating', label: 'Radiating' },
+      { value: 'diffuse', label: 'Diffuse' },
+    ],
+  },
+  {
+    label: 'Duration',
+    options: [
+      { value: 'constant', label: 'Constant' },
+      { value: 'intermittent', label: 'Intermittent' },
+      { value: 'lingering', label: 'Lingering after stimulus removed' },
+    ],
+  },
+  {
+    label: 'Severity',
+    options: [
+      { value: 'mild', label: 'Mild' },
+      { value: 'moderate', label: 'Moderate' },
+      { value: 'severe', label: 'Severe' },
+    ],
+  },
+  {
+    label: 'Pattern',
+    options: [
+      { value: 'worse_lying_down', label: 'Worse when lying down' },
+      { value: 'relieved_cold', label: 'Relieved by cold' },
+      { value: 'relieved_heat', label: 'Relieved by heat' },
+    ],
+  },
+  {
+    label: 'Associated Factors',
+    options: [
+      { value: 'relieved_analgesics', label: 'Relieved by analgesics' },
+      { value: 'not_relieved_analgesics', label: 'Not relieved by analgesics' },
+    ],
+  },
+  {
+    label: 'History of Pain',
+    columns: 3,
+    colSpan: 2,
+    options: [
+      { value: 'few_days', label: 'Few days' },
+      { value: '1_week', label: '1 week' },
+      { value: 'several_weeks', label: 'Several weeks' },
+      { value: '1_month', label: '1 month' },
+      { value: 'several_months', label: 'Several months' },
+      { value: 'unknown_history', label: 'Unknown' },
+      { value: 'asymptomatic', label: 'Asymptomatic' },
+      { value: 'history_other', label: 'Other' },
+    ],
+  },
 ];
 
 // Pain Duration

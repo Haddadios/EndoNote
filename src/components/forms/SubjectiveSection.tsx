@@ -3,7 +3,7 @@ import { Dropdown, CheckboxGroup, TextInput } from '../common';
 import {
   chiefComplaints,
   painCharacteristics,
-  painDurations,
+  painCharacteristicGroups,
   medicalHistoryAlerts,
   genderOptions,
 } from '../../data';
@@ -12,6 +12,31 @@ export function SubjectiveSection() {
   const { noteData, updateField } = useNote();
 
   const isFirstVisit = noteData.visitType === 'first_visit';
+
+  // Split medical history alerts into main and more options
+  const mainMedicalHistoryItems = [
+    'none',
+    'hypertension',
+    'diabetes',
+    'pregnancy',
+    'allergy_latex',
+    'hiv',
+    'anxiety',
+    'other',
+  ];
+
+  const medicalHistoryMainOptions = medicalHistoryAlerts.filter((opt) =>
+    mainMedicalHistoryItems.includes(opt.value)
+  );
+
+  const medicalHistoryMoreOptions = medicalHistoryAlerts.filter(
+    (opt) => !mainMedicalHistoryItems.includes(opt.value)
+  );
+
+  // Chief complaint options split (keep core items visible)
+  const mainChiefComplaintItems = ['pain', 'swelling', 'sensitivity_bite', 'trauma', 'recall', 'other'];
+  const chiefComplaintMainOptions = chiefComplaints.filter((opt) => mainChiefComplaintItems.includes(opt.value));
+  const chiefComplaintMoreOptions = chiefComplaints.filter((opt) => !mainChiefComplaintItems.includes(opt.value));
 
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
@@ -106,7 +131,8 @@ export function SubjectiveSection() {
         <>
           <CheckboxGroup
             label="Medical History Alerts"
-            options={medicalHistoryAlerts}
+            mainOptions={medicalHistoryMainOptions}
+            moreOptions={medicalHistoryMoreOptions}
             selectedValues={noteData.medicalHistoryAlerts}
             onChange={(values) => updateField('medicalHistoryAlerts', values)}
             columns={2}
@@ -123,45 +149,36 @@ export function SubjectiveSection() {
 
           <CheckboxGroup
             label="Chief Complaint(s)"
-            options={chiefComplaints}
+            mainOptions={chiefComplaintMainOptions}
+            moreOptions={chiefComplaintMoreOptions}
             selectedValues={noteData.chiefComplaints}
             onChange={(values) => updateField('chiefComplaints', values)}
             columns={2}
           />
 
-          {noteData.chiefComplaints.includes('other') && (
-            <TextInput
-              label="Specify Chief Complaint"
-              value={noteData.chiefComplaintCustom}
-              onChange={(value) => updateField('chiefComplaintCustom', value)}
-              placeholder="Enter chief complaint..."
-            />
-          )}
-
-          <Dropdown
-            label="Duration"
-            value={noteData.painDuration}
-            options={painDurations}
-            onChange={(value) => updateField('painDuration', value)}
-            placeholder="Select duration..."
+          <TextInput
+            label="Chief Complaint Details"
+            value={noteData.chiefComplaintCustom}
+            onChange={(value) => updateField('chiefComplaintCustom', value)}
+            placeholder="Enter chief complaint details..."
           />
-
-          {noteData.painDuration === 'other' && (
-            <TextInput
-              label="Specify Duration"
-              value={noteData.painDurationCustom}
-              onChange={(value) => updateField('painDurationCustom', value)}
-              placeholder="Enter specific duration..."
-            />
-          )}
-
           <CheckboxGroup
             label="Pain Characteristics"
             options={painCharacteristics}
+            groups={painCharacteristicGroups}
             selectedValues={noteData.painCharacteristics}
             onChange={(values) => updateField('painCharacteristics', values)}
-            columns={2}
+            columns={3}
           />
+
+          {noteData.painCharacteristics.includes('history_other') && (
+            <TextInput
+              label="Specify Pain History"
+              value={noteData.painHistoryOther}
+              onChange={(value) => updateField('painHistoryOther', value)}
+              placeholder="Enter pain history details..."
+            />
+          )}
         </>
       )}
     </div>

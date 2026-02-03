@@ -43,6 +43,7 @@ const initialNoteData: NoteData = {
   painDuration: '',
   painDurationCustom: '',
   painCharacteristics: [],
+  painHistoryOther: '',
   bloodPressure: '',
   pulse: '',
   respiratoryRate: '',

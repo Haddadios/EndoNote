@@ -80,6 +80,7 @@ export interface NoteData {
   painDuration: string;
   painDurationCustom: string;
   painCharacteristics: string[];
+  painHistoryOther: string;
   bloodPressure: string;
   pulse: string;
   respiratoryRate: string;
@@ -160,4 +161,11 @@ export interface StoredData {
 export interface SelectOption {
   value: string;
   label: string;
+}
+
+export interface SelectOptionGroup {
+  label: string;
+  options: SelectOption[];
+  columns?: 1 | 2 | 3 | 4;
+  colSpan?: 1 | 2 | 3 | 4;
 }
