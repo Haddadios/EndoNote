@@ -65,8 +65,9 @@ export const isolationMethods: SelectOption[] = [
 
 // Working Length Methods
 export const workingLengthMethods: SelectOption[] = [
-  { value: 'apex_locator', label: 'Apex locator' },
-  { value: 'radiographic', label: 'Radiographic' },
+  { value: 'apex_locator', label: 'Apex Locator' },
+  { value: 'radiograph_cbct', label: 'Radiograph (CBCT)' },
+  { value: 'radiograph_film', label: 'Radiograph (File Film)' },
 ];
 
 // Instrumentation Systems (updated: removed Profile, GT Files, added Edge X7, Edge One)

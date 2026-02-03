@@ -461,7 +461,7 @@ export function generateSOAPNote(data: NoteData): string {
 
   // Working length method
   if (data.workingLengthMethod.length > 0) {
-    lines.push(`Working length method: ${joinList(getLabels(workingLengthMethods, data.workingLengthMethod))}`);
+    lines.push(`Working length determined using ${joinList(getLabels(workingLengthMethods, data.workingLengthMethod))}`);
   }
 
   // Per-canal Instrumentation & Obturation (only show canals that match selected configurations)

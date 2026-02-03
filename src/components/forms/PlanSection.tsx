@@ -262,7 +262,7 @@ export function PlanSection() {
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Location/Technique
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {anesthesiaLocations.map((location) => {
             const isSelected = noteData.anesthesiaLocations.includes(location.value);
             const locationAnesthetics = noteData.anesthesiaLocationMapping[location.value] || [];
@@ -364,7 +364,7 @@ export function PlanSection() {
         options={canalConfigurations}
         selectedValues={noteData.canalConfiguration}
         onChange={(values) => updateField('canalConfiguration', values)}
-        columns={2}
+        columns={3}
       />
 
       {/* Custom Canal Names Input */}
@@ -396,7 +396,7 @@ export function PlanSection() {
         options={workingLengthMethods}
         selectedValues={noteData.workingLengthMethod}
         onChange={(values) => updateField('workingLengthMethod', values)}
-        columns={2}
+        columns={3}
       />
 
       {/* Per-Canal Instrumentation Setup */}
@@ -601,7 +601,7 @@ export function PlanSection() {
         moreOptions={irrigationMoreOptions}
         selectedValues={noteData.irrigationProtocol}
         onChange={(values) => updateField('irrigationProtocol', values)}
-        columns={2}
+        columns={3}
       />
 
       {/* Medicament */}
