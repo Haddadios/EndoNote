@@ -1,7 +1,7 @@
 import { useNote } from '../../context/NoteContext';
 
 export function Header() {
-  const { preferences, updatePreferences } = useNote();
+  const { preferences, updatePreferences, hasSavedDraft, clearSavedDraft, clearDraftAndReset } = useNote();
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
@@ -30,6 +30,25 @@ export function Header() {
                 <option value="fdi">FDI (11-48)</option>
               </select>
             </label>
+
+            {hasSavedDraft && (
+              <>
+                <button
+                  type="button"
+                  onClick={clearSavedDraft}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                >
+                  Clear Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={clearDraftAndReset}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-100 dark:border-red-800 dark:hover:bg-red-900/50"
+                >
+                  Clear Draft &amp; Reset
+                </button>
+              </>
+            )}
 
             <button
               onClick={() => updatePreferences({ darkMode: !preferences.darkMode })}

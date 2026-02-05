@@ -40,10 +40,23 @@ export function generateReferralLetter(noteData: NoteData) {
     ? treatmentLabels[noteData.treatmentOptionsOffered[0] as keyof typeof treatmentLabels]
     : '';
 
+  const treatmentPerformedLabel = treatmentLabels[noteData.treatmentPerformed as keyof typeof treatmentLabels];
+  const recommendedTreatmentLabel =
+    treatmentLabels[primaryDiagnosis?.recommendedTreatment as keyof typeof treatmentLabels];
+
+  const selectedTreatmentValue =
+    noteData.treatmentPerformed ||
+    noteData.treatmentOptionsOffered[0] ||
+    primaryDiagnosis?.recommendedTreatment ||
+    '';
+
+  const noTreatmentValues = new Set(['no_treatment_monitoring']);
+  const hasTreatmentSelected = Boolean(selectedTreatmentValue) && !noTreatmentValues.has(selectedTreatmentValue);
+
   const treatmentPerformed =
-    treatmentLabels[noteData.treatmentPerformed as keyof typeof treatmentLabels] ||
+    treatmentPerformedLabel ||
     planSelectedTreatment ||
-    treatmentLabels[primaryDiagnosis?.recommendedTreatment as keyof typeof treatmentLabels] ||
+    recommendedTreatmentLabel ||
     placeholderItem;
 
   const canalSet = new Set<string>();
@@ -115,6 +128,21 @@ export function generateReferralLetter(noteData: NoteData) {
   const comments =
     noteData.referralComments || `Please proceed with final restoration for Tooth ${tooth}.`;
 
+  const introParagraph = hasTreatmentSelected
+    ? `Thank you for referring ${patientNameDisplay} to our clinic. Below please find a digital radiographic image of the completed treatment. ${patientNameForBody} tolerated the procedure well and has been referred to your clinic for the final restoration. The patient will then return to your clinic for continuation of general dental treatment. We appreciate your trust and confidence in us. We look forward to working with you again in the future. If you have any questions or comments, please do not hesitate to contact us at the number below.`
+    : `Thank you for referring ${patientNameDisplay} to our clinic. We appreciate your trust and confidence in us. We look forward to working with you again in the future. If you have any questions or comments, please do not hesitate to contact us at the number below.`;
+
+  const completionSection = hasTreatmentSelected
+    ? [
+        `Treatment Completion Date: ${completionDate}`,
+        `  Treatment Performed: ${treatmentPerformed}`,
+        `  ${canalLine}`,
+        `  Temporized/Restored with: ${temporizedWith}`,
+        `  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`,
+        '',
+      ]
+    : [];
+
   return [
     `Patient Name: ${noteData.patientName || ''}`,
     `Patient Chart Number: ${noteData.patientChartNumber || ''}`,
@@ -123,7 +151,7 @@ export function generateReferralLetter(noteData: NoteData) {
     '',
     'Dear Colleague,',
     '',
-    `Thank you for referring ${patientNameDisplay} to our clinic. Below please find a digital radiographic image of the completed treatment. ${patientNameForBody} tolerated the procedure well and has been referred to your clinic for the final restoration. The patient will then return to your clinic for continuation of general dental treatment. We appreciate your trust and confidence in us. We look forward to working with you again in the future. If you have any questions or comments, please do not hesitate to contact us at the number below.`,
+    introParagraph,
     '',
     `Tooth/Area: ${tooth}`,
     '',
@@ -133,12 +161,7 @@ export function generateReferralLetter(noteData: NoteData) {
     `  Treatment Recommended: ${treatmentRecommended}`,
     `  Prognosis: ${prognosis}`,
     '',
-    `Treatment Completion Date: ${completionDate}`,
-    `  Treatment Performed: ${treatmentPerformed}`,
-    `  ${canalLine}`,
-    `  Temporized/Restored with: ${temporizedWith}`,
-    `  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`,
-    '',
+    ...completionSection,
     'Comments:',
     `  ${comments}`,
     '',

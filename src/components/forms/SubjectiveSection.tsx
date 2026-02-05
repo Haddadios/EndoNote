@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNote } from '../../context/NoteContext';
 import { Dropdown, CheckboxGroup, TextInput } from '../common';
 import {
@@ -10,6 +11,23 @@ import {
 
 export function SubjectiveSection() {
   const { noteData, updateField } = useNote();
+  const [clearedState, setClearedState] = useState<{
+    age: string;
+    gender: string;
+    chiefComplaints: string[];
+    chiefComplaintCustom: string;
+    painDuration: string;
+    painDurationCustom: string;
+    painCharacteristics: string[];
+    painHistoryOther: string;
+    bloodPressure: string;
+    pulse: string;
+    respiratoryRate: string;
+    medicalHistoryAlerts: string[];
+    medicalHistoryComments: string;
+    continuingTreatmentComments: string;
+  } | null>(null);
+  const [showUndo, setShowUndo] = useState(false);
 
   const isFirstVisit = noteData.visitType === 'first_visit';
 
@@ -38,9 +56,88 @@ export function SubjectiveSection() {
   const chiefComplaintMainOptions = chiefComplaints.filter((opt) => mainChiefComplaintItems.includes(opt.value));
   const chiefComplaintMoreOptions = chiefComplaints.filter((opt) => !mainChiefComplaintItems.includes(opt.value));
 
+  const handleClearSection = () => {
+    setClearedState({
+      age: noteData.age,
+      gender: noteData.gender,
+      chiefComplaints: noteData.chiefComplaints,
+      chiefComplaintCustom: noteData.chiefComplaintCustom,
+      painDuration: noteData.painDuration,
+      painDurationCustom: noteData.painDurationCustom,
+      painCharacteristics: noteData.painCharacteristics,
+      painHistoryOther: noteData.painHistoryOther,
+      bloodPressure: noteData.bloodPressure,
+      pulse: noteData.pulse,
+      respiratoryRate: noteData.respiratoryRate,
+      medicalHistoryAlerts: noteData.medicalHistoryAlerts,
+      medicalHistoryComments: noteData.medicalHistoryComments,
+      continuingTreatmentComments: noteData.continuingTreatmentComments,
+    });
+
+    updateField('age', '');
+    updateField('gender', '');
+    updateField('chiefComplaints', []);
+    updateField('chiefComplaintCustom', '');
+    updateField('painDuration', '');
+    updateField('painDurationCustom', '');
+    updateField('painCharacteristics', []);
+    updateField('painHistoryOther', '');
+    updateField('bloodPressure', '');
+    updateField('pulse', '');
+    updateField('respiratoryRate', '');
+    updateField('medicalHistoryAlerts', []);
+    updateField('medicalHistoryComments', '');
+    updateField('continuingTreatmentComments', '');
+    setShowUndo(true);
+  };
+
+  const handleUndoClear = () => {
+    if (!clearedState) {
+      setShowUndo(false);
+      return;
+    }
+    updateField('age', clearedState.age);
+    updateField('gender', clearedState.gender);
+    updateField('chiefComplaints', clearedState.chiefComplaints);
+    updateField('chiefComplaintCustom', clearedState.chiefComplaintCustom);
+    updateField('painDuration', clearedState.painDuration);
+    updateField('painDurationCustom', clearedState.painDurationCustom);
+    updateField('painCharacteristics', clearedState.painCharacteristics);
+    updateField('painHistoryOther', clearedState.painHistoryOther);
+    updateField('bloodPressure', clearedState.bloodPressure);
+    updateField('pulse', clearedState.pulse);
+    updateField('respiratoryRate', clearedState.respiratoryRate);
+    updateField('medicalHistoryAlerts', clearedState.medicalHistoryAlerts);
+    updateField('medicalHistoryComments', clearedState.medicalHistoryComments);
+    updateField('continuingTreatmentComments', clearedState.continuingTreatmentComments);
+    setShowUndo(false);
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Subjective</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Subjective</h2>
+        <button
+          type="button"
+          onClick={handleClearSection}
+          className="text-xs px-3 py-1 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+        >
+          Clear Section
+        </button>
+      </div>
+
+      {showUndo && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-100">
+          <span>Subjective section cleared.</span>
+          <button
+            type="button"
+            onClick={handleUndoClear}
+            className="text-xs font-medium text-amber-900 underline underline-offset-2 dark:text-amber-100"
+          >
+            Undo
+          </button>
+        </div>
+      )}
 
       {/* Visit Type Toggle */}
       <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-300 dark:border-blue-700 rounded-lg">

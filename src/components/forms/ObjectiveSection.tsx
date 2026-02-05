@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNote } from '../../context/NoteContext';
 import { Dropdown, CheckboxGroup, Checkbox, TextInput } from '../common';
 import {
@@ -13,6 +14,24 @@ import {
 
 export function ObjectiveSection() {
   const { noteData, preferences, updateField, updateTooth } = useNote();
+  const [clearedState, setClearedState] = useState<{
+    toothNumber: string;
+    coldTest: string[];
+    eptTest: string[];
+    heatTest: string[];
+    vitalityTestComments: string;
+    percussion: string[];
+    palpation: string[];
+    probingDepths: typeof noteData.probingDepths;
+    mobility: string[];
+    swelling: string[];
+    sinusTract: boolean;
+    radiographicFindings: string[];
+    clinicalFindingsComments: string;
+    objectiveNotes: string;
+    continuingTreatmentObjectiveComments: string;
+  } | null>(null);
+  const [showUndo, setShowUndo] = useState(false);
 
   const teethOptions = preferences.toothNotation === 'universal' ? universalTeeth : fdiTeeth;
   const isFirstVisit = noteData.visitType === 'first_visit';
@@ -21,9 +40,93 @@ export function ObjectiveSection() {
     return null;
   }
 
+  const emptyProbingDepths = { MB: '', B: '', DB: '', DL: '', L: '', ML: '' };
+
+  const handleClearSection = () => {
+    setClearedState({
+      toothNumber: noteData.toothNumber,
+      coldTest: noteData.coldTest,
+      eptTest: noteData.eptTest,
+      heatTest: noteData.heatTest,
+      vitalityTestComments: noteData.vitalityTestComments,
+      percussion: noteData.percussion,
+      palpation: noteData.palpation,
+      probingDepths: noteData.probingDepths,
+      mobility: noteData.mobility,
+      swelling: noteData.swelling,
+      sinusTract: noteData.sinusTract,
+      radiographicFindings: noteData.radiographicFindings,
+      clinicalFindingsComments: noteData.clinicalFindingsComments,
+      objectiveNotes: noteData.objectiveNotes,
+      continuingTreatmentObjectiveComments: noteData.continuingTreatmentObjectiveComments,
+    });
+
+    updateTooth('');
+    updateField('coldTest', []);
+    updateField('eptTest', []);
+    updateField('heatTest', []);
+    updateField('vitalityTestComments', '');
+    updateField('percussion', []);
+    updateField('palpation', []);
+    updateField('probingDepths', emptyProbingDepths);
+    updateField('mobility', []);
+    updateField('swelling', []);
+    updateField('sinusTract', false);
+    updateField('radiographicFindings', []);
+    updateField('clinicalFindingsComments', '');
+    updateField('objectiveNotes', '');
+    updateField('continuingTreatmentObjectiveComments', '');
+    setShowUndo(true);
+  };
+
+  const handleUndoClear = () => {
+    if (!clearedState) {
+      setShowUndo(false);
+      return;
+    }
+    updateTooth(clearedState.toothNumber);
+    updateField('coldTest', clearedState.coldTest);
+    updateField('eptTest', clearedState.eptTest);
+    updateField('heatTest', clearedState.heatTest);
+    updateField('vitalityTestComments', clearedState.vitalityTestComments);
+    updateField('percussion', clearedState.percussion);
+    updateField('palpation', clearedState.palpation);
+    updateField('probingDepths', clearedState.probingDepths);
+    updateField('mobility', clearedState.mobility);
+    updateField('swelling', clearedState.swelling);
+    updateField('sinusTract', clearedState.sinusTract);
+    updateField('radiographicFindings', clearedState.radiographicFindings);
+    updateField('clinicalFindingsComments', clearedState.clinicalFindingsComments);
+    updateField('objectiveNotes', clearedState.objectiveNotes);
+    updateField('continuingTreatmentObjectiveComments', clearedState.continuingTreatmentObjectiveComments);
+    setShowUndo(false);
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Objective</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Objective</h2>
+        <button
+          type="button"
+          onClick={handleClearSection}
+          className="text-xs px-3 py-1 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+        >
+          Clear Section
+        </button>
+      </div>
+
+      {showUndo && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-100">
+          <span>Objective section cleared.</span>
+          <button
+            type="button"
+            onClick={handleUndoClear}
+            className="text-xs font-medium text-amber-900 underline underline-offset-2 dark:text-amber-100"
+          >
+            Undo
+          </button>
+        </div>
+      )}
 
       <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-2 mb-2">Tooth Information</h3>
       <Dropdown

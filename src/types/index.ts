@@ -11,6 +11,7 @@ export type TreatmentType =
   | 'intentional_replantation'
   | 'autotransplantation'
   | 'direct_restoration'
+  | 'extraction'
   | 'no_treatment_monitoring'
   | 'trauma'
   | 'other';
@@ -53,6 +54,7 @@ export interface AnesthesiaAmounts {
 }
 
 export type VisitType = 'first_visit' | 'continuing_treatment';
+export type TemplateScope = 'all' | 'subjective' | 'objective' | 'assessment' | 'plan' | 'referral';
 
 export interface ProbingDepths {
   MB: string; // Mesio-Buccal
@@ -145,6 +147,8 @@ export interface Template {
   id: string;
   name: string;
   data: Partial<NoteData>;
+  scope: TemplateScope[];
+  visitType: VisitType | 'any';
   createdAt: string;
 }
 
@@ -156,6 +160,11 @@ export interface Preferences {
 export interface StoredData {
   templates: Template[];
   preferences: Preferences;
+  noteData?: NoteData;
+  outputEdits?: {
+    noteText?: string | null;
+    referralText?: string | null;
+  };
 }
 
 export interface SelectOption {

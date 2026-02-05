@@ -1,5 +1,5 @@
 import { NoteProvider } from './context/NoteContext';
-import { Header } from './components/layout';
+import { DraftBanner, Header, SectionNav } from './components/layout';
 import {
   SubjectiveSection,
   ObjectiveSection,
@@ -14,22 +14,34 @@ function App() {
     <NoteProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header />
+        <DraftBanner />
 
         <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Form Sections (2/3 width) */}
             <div className="lg:col-span-2 space-y-6">
-              <SubjectiveSection />
-              <ObjectiveSection />
-              <AssessmentSection />
-              <PlanSection />
+              <SectionNav />
+              <div id="subjective" className="scroll-mt-24">
+                <SubjectiveSection />
+              </div>
+              <div id="objective" className="scroll-mt-24">
+                <ObjectiveSection />
+              </div>
+              <div id="assessment" className="scroll-mt-24">
+                <AssessmentSection />
+              </div>
+              <div id="plan" className="scroll-mt-24">
+                <PlanSection />
+              </div>
             </div>
 
             {/* Right Column - Output and Templates (1/3 width) */}
             <div className="lg:col-span-1">
               <div className="lg:sticky lg:top-8 space-y-6">
                 <NoteOutput />
-                <ReferralSection />
+                <div id="referral" className="scroll-mt-24">
+                  <ReferralSection />
+                </div>
                 <ReferralLetterOutput />
                 <TemplateManager />
               </div>

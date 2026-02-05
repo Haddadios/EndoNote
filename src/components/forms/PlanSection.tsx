@@ -30,6 +30,31 @@ import {
 export function PlanSection() {
   const { noteData, updateField, updateCanalMAF } = useNote();
   const [hasComplications, setHasComplications] = useState(false);
+  const [clearedState, setClearedState] = useState<{
+    treatmentOptionsOffered: string[];
+    treatmentComments: string;
+    consentGiven: boolean;
+    anesthesiaAmounts: AnesthesiaAmounts;
+    anesthesiaLocations: string[];
+    anesthesiaLocationMapping: Record<string, string[]>;
+    anesthesiaLocationSides: Record<string, string>;
+    isolation: string;
+    canalConfiguration: string[];
+    customCanalNames: string[];
+    workingLengthMethod: string[];
+    canalMAFs: typeof noteData.canalMAFs;
+    irrigationProtocol: string[];
+    medicament: string;
+    restoration: string;
+    complications: string[];
+    complicationsComments: string;
+    postOpInstructions: string[];
+    additionalNotes: string;
+    nextVisit: string[];
+    followUp: string;
+    referral: string;
+  } | null>(null);
+  const [showUndo, setShowUndo] = useState(false);
 
   // Get canal names based on selected configuration
   const getSelectedCanals = (): string[] => {
@@ -190,9 +215,124 @@ export function PlanSection() {
     });
   };
 
+  const emptyAnesthesiaAmounts: AnesthesiaAmounts = {
+    lidocaine_epi: '',
+    lidocaine_no_epi: '',
+    articaine_epi: '',
+    articaine_200: '',
+    carbocaine: '',
+    bupivacaine: '',
+    marcaine: '',
+  };
+
+  const handleClearSection = () => {
+    setClearedState({
+      treatmentOptionsOffered: noteData.treatmentOptionsOffered,
+      treatmentComments: noteData.treatmentComments,
+      consentGiven: noteData.consentGiven,
+      anesthesiaAmounts: noteData.anesthesiaAmounts,
+      anesthesiaLocations: noteData.anesthesiaLocations,
+      anesthesiaLocationMapping: noteData.anesthesiaLocationMapping,
+      anesthesiaLocationSides: noteData.anesthesiaLocationSides,
+      isolation: noteData.isolation,
+      canalConfiguration: noteData.canalConfiguration,
+      customCanalNames: noteData.customCanalNames,
+      workingLengthMethod: noteData.workingLengthMethod,
+      canalMAFs: noteData.canalMAFs,
+      irrigationProtocol: noteData.irrigationProtocol,
+      medicament: noteData.medicament,
+      restoration: noteData.restoration,
+      complications: noteData.complications,
+      complicationsComments: noteData.complicationsComments,
+      postOpInstructions: noteData.postOpInstructions,
+      additionalNotes: noteData.additionalNotes,
+      nextVisit: noteData.nextVisit,
+      followUp: noteData.followUp,
+      referral: noteData.referral,
+    });
+
+    updateField('treatmentOptionsOffered', []);
+    updateField('treatmentComments', '');
+    updateField('consentGiven', false);
+    updateField('anesthesiaAmounts', emptyAnesthesiaAmounts);
+    updateField('anesthesiaLocations', []);
+    updateField('anesthesiaLocationMapping', {});
+    updateField('anesthesiaLocationSides', {});
+    updateField('isolation', '');
+    updateField('canalConfiguration', []);
+    updateField('customCanalNames', []);
+    updateField('workingLengthMethod', []);
+    updateField('canalMAFs', []);
+    updateField('irrigationProtocol', []);
+    updateField('medicament', '');
+    updateField('restoration', '');
+    updateField('complications', []);
+    updateField('complicationsComments', '');
+    updateField('postOpInstructions', []);
+    updateField('additionalNotes', '');
+    updateField('nextVisit', []);
+    updateField('followUp', '');
+    updateField('referral', '');
+    setHasComplications(false);
+    setShowUndo(true);
+  };
+
+  const handleUndoClear = () => {
+    if (!clearedState) {
+      setShowUndo(false);
+      return;
+    }
+    updateField('treatmentOptionsOffered', clearedState.treatmentOptionsOffered);
+    updateField('treatmentComments', clearedState.treatmentComments);
+    updateField('consentGiven', clearedState.consentGiven);
+    updateField('anesthesiaAmounts', clearedState.anesthesiaAmounts);
+    updateField('anesthesiaLocations', clearedState.anesthesiaLocations);
+    updateField('anesthesiaLocationMapping', clearedState.anesthesiaLocationMapping);
+    updateField('anesthesiaLocationSides', clearedState.anesthesiaLocationSides);
+    updateField('isolation', clearedState.isolation);
+    updateField('canalConfiguration', clearedState.canalConfiguration);
+    updateField('customCanalNames', clearedState.customCanalNames);
+    updateField('workingLengthMethod', clearedState.workingLengthMethod);
+    updateField('canalMAFs', clearedState.canalMAFs);
+    updateField('irrigationProtocol', clearedState.irrigationProtocol);
+    updateField('medicament', clearedState.medicament);
+    updateField('restoration', clearedState.restoration);
+    updateField('complications', clearedState.complications);
+    updateField('complicationsComments', clearedState.complicationsComments);
+    updateField('postOpInstructions', clearedState.postOpInstructions);
+    updateField('additionalNotes', clearedState.additionalNotes);
+    updateField('nextVisit', clearedState.nextVisit);
+    updateField('followUp', clearedState.followUp);
+    updateField('referral', clearedState.referral);
+    setHasComplications(clearedState.complications.length > 0 || Boolean(clearedState.complicationsComments.trim()));
+    setShowUndo(false);
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Plan / Treatment</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Plan / Treatment</h2>
+        <button
+          type="button"
+          onClick={handleClearSection}
+          className="text-xs px-3 py-1 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+        >
+          Clear Section
+        </button>
+      </div>
+
+      {showUndo && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-100">
+          <span>Plan section cleared.</span>
+          <button
+            type="button"
+            onClick={handleUndoClear}
+            className="text-xs font-medium text-amber-900 underline underline-offset-2 dark:text-amber-100"
+          >
+            Undo
+          </button>
+        </div>
+      )}
 
       {/* Treatment Options Offered */}
       <CheckboxGroup
@@ -200,7 +340,7 @@ export function PlanSection() {
         options={treatmentOptionsOffered}
         selectedValues={noteData.treatmentOptionsOffered}
         onChange={(values) => updateField('treatmentOptionsOffered', values)}
-        columns={2}
+        columns={3}
       />
 
       <TextInput
