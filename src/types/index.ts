@@ -43,6 +43,17 @@ export interface CanalMAF {
   obturationSealer: string;
 }
 
+export interface ToothTreatmentPlan {
+  id: string;
+  toothNumber: string;
+  toothType: ToothType;
+  canalConfiguration: string[];
+  customCanalNames: string[];
+  canalMAFs: CanalMAF[];
+  workingLengthMethod: string[];
+  restoration: string;
+}
+
 export interface AnesthesiaAmounts {
   lidocaine_epi: string;
   lidocaine_no_epi: string;
@@ -120,6 +131,7 @@ export interface NoteData {
 
   // Plan
   treatmentOptionsOffered: string[];
+  treatmentOptionsOfferedOther: string;
   treatmentComments: string;
   consentGiven: boolean;
   anesthesiaAmounts: AnesthesiaAmounts;
@@ -127,13 +139,19 @@ export interface NoteData {
   anesthesiaLocationMapping: Record<string, string[]>; // maps location to array of anesthetic types
   anesthesiaLocationSides: Record<string, string>; // maps location to 'rhs' | 'lhs' | 'bilateral'
   isolation: string;
+
+  // Multi-tooth treatment plans
+  toothTreatmentPlans: ToothTreatmentPlan[];
+
+  // Legacy single-tooth fields (kept for backward compatibility)
   canalConfiguration: string[];
   customCanalNames: string[];
   workingLengthMethod: string[];
   canalMAFs: CanalMAF[];
+  restoration: string;
+
   irrigationProtocol: string[];
   medicament: string;
-  restoration: string;
   complications: string[];
   complicationsComments: string;
   postOpInstructions: string[];
@@ -157,6 +175,17 @@ export interface Preferences {
   darkMode: boolean;
 }
 
+export interface SavedDraft {
+  id: string;
+  timestamp: string;
+  noteData: NoteData;
+  outputEdits: {
+    noteText: string | null;
+    referralText: string | null;
+  };
+  preview: string; // Short preview for UI display
+}
+
 export interface StoredData {
   templates: Template[];
   preferences: Preferences;
@@ -165,6 +194,7 @@ export interface StoredData {
     noteText?: string | null;
     referralText?: string | null;
   };
+  savedDrafts?: SavedDraft[];
 }
 
 export interface SelectOption {

@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { NoteData, Template, Preferences, ToothDiagnosis, CanalMAF, AnesthesiaAmounts, TemplateScope } from '../types';
+import type { NoteData, Template, Preferences, ToothDiagnosis, CanalMAF, AnesthesiaAmounts, TemplateScope, SavedDraft, ToothTreatmentPlan } from '../types';
 import { getToothType } from '../data';
 import { templateScopeFields } from '../utils/templateUtils';
 
@@ -13,6 +13,18 @@ const createEmptyToothDiagnosis = (toothNumber = ''): ToothDiagnosis => ({
   periapicalDiagnosis: '',
   prognosis: '',
   recommendedTreatment: '',
+});
+
+// Helper to create empty tooth treatment plan
+const createEmptyToothTreatmentPlan = (toothNumber = ''): ToothTreatmentPlan => ({
+  id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+  toothNumber,
+  toothType: toothNumber ? getToothType(toothNumber) : 'molar',
+  canalConfiguration: [],
+  customCanalNames: [],
+  canalMAFs: [],
+  workingLengthMethod: [],
+  restoration: '',
 });
 
 // Initial anesthesia amounts
@@ -39,6 +51,22 @@ const normalizeToothDiagnoses = (items?: ToothDiagnosis[], fallbackTooth?: strin
   }
 
   return [createEmptyToothDiagnosis(fallbackTooth || '')];
+};
+
+const normalizeToothTreatmentPlans = (items?: ToothTreatmentPlan[]): ToothTreatmentPlan[] => {
+  if (items && items.length > 0) {
+    return items.map((plan) => {
+      const fallback = createEmptyToothTreatmentPlan(plan.toothNumber || '');
+      return {
+        ...fallback,
+        ...plan,
+        id: plan.id || fallback.id,
+        canalMAFs: plan.canalMAFs || [],
+      };
+    });
+  }
+
+  return [];
 };
 
 interface OutputEdits {
@@ -170,6 +198,33 @@ const hasDraftContent = (data: NoteData): boolean => {
     return true;
   }
 
+  // Check toothTreatmentPlans
+  if (
+    data.toothTreatmentPlans &&
+    data.toothTreatmentPlans.some(
+      (plan) =>
+        hasNonEmptyString(plan.toothNumber) ||
+        plan.canalConfiguration.length > 0 ||
+        plan.customCanalNames.some((name) => hasNonEmptyString(name)) ||
+        plan.workingLengthMethod.length > 0 ||
+        hasNonEmptyString(plan.restoration) ||
+        plan.canalMAFs.some(
+          (maf) =>
+            maf.patent ||
+            hasNonEmptyString(maf.workingLength) ||
+            hasNonEmptyString(maf.referencePoint) ||
+            hasNonEmptyString(maf.fileSystem) ||
+            hasNonEmptyString(maf.size) ||
+            hasNonEmptyString(maf.taper) ||
+            hasNonEmptyString(maf.obturationTechnique) ||
+            hasNonEmptyString(maf.obturationMaterial) ||
+            hasNonEmptyString(maf.obturationSealer)
+        )
+    )
+  ) {
+    return true;
+  }
+
   return false;
 };
 
@@ -229,6 +284,7 @@ const initialNoteData: NoteData = {
 
   // Plan
   treatmentOptionsOffered: [],
+  treatmentOptionsOfferedOther: '',
   treatmentComments: '',
   consentGiven: false,
   anesthesiaAmounts: { ...initialAnesthesiaAmounts },
@@ -236,13 +292,19 @@ const initialNoteData: NoteData = {
   anesthesiaLocationMapping: {},
   anesthesiaLocationSides: {},
   isolation: '',
+
+  // Multi-tooth treatment plans
+  toothTreatmentPlans: [],
+
+  // Legacy single-tooth fields (kept for backward compatibility)
   canalConfiguration: [],
   customCanalNames: [],
   workingLengthMethod: [],
   canalMAFs: [],
+  restoration: '',
+
   irrigationProtocol: [],
   medicament: '',
-  restoration: '',
   complications: [],
   complicationsComments: '',
   postOpInstructions: [],
@@ -255,6 +317,36 @@ const initialNoteData: NoteData = {
 const normalizeNoteData = (data?: Partial<NoteData>): NoteData => {
   const merged = { ...initialNoteData, ...data };
 
+  // Migration: If toothTreatmentPlans is empty but legacy fields have data, migrate to new structure
+  let treatmentPlans = normalizeToothTreatmentPlans(data?.toothTreatmentPlans);
+
+  if (
+    treatmentPlans.length === 0 &&
+    data &&
+    (data.canalConfiguration?.length ||
+      data.customCanalNames?.some((n) => n) ||
+      data.canalMAFs?.length ||
+      data.workingLengthMethod?.length ||
+      data.restoration)
+  ) {
+    // Migrate legacy data to new structure for the primary tooth
+    const primaryTooth = data.toothNumber || data.toothDiagnoses?.[0]?.toothNumber || '';
+    if (primaryTooth) {
+      treatmentPlans = [
+        {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          toothNumber: primaryTooth,
+          toothType: getToothType(primaryTooth),
+          canalConfiguration: data.canalConfiguration || [],
+          customCanalNames: data.customCanalNames || [],
+          canalMAFs: data.canalMAFs || [],
+          workingLengthMethod: data.workingLengthMethod || [],
+          restoration: data.restoration || '',
+        },
+      ];
+    }
+  }
+
   return {
     ...merged,
     probingDepths: { ...initialNoteData.probingDepths, ...(data?.probingDepths ?? {}) },
@@ -262,18 +354,20 @@ const normalizeNoteData = (data?: Partial<NoteData>): NoteData => {
     anesthesiaLocationMapping: data?.anesthesiaLocationMapping ?? {},
     anesthesiaLocationSides: data?.anesthesiaLocationSides ?? {},
     toothDiagnoses: normalizeToothDiagnoses(data?.toothDiagnoses, data?.toothNumber),
+    toothTreatmentPlans: treatmentPlans,
   };
 };
 
 const initialPreferences: Preferences = {
   toothNotation: 'universal',
-  darkMode: false,
+  darkMode: true,
 };
 
 interface State {
   noteData: NoteData;
   templates: Template[];
   preferences: Preferences;
+  savedDrafts: SavedDraft[];
 }
 
 type Action =
@@ -283,13 +377,19 @@ type Action =
   | { type: 'UPDATE_TOOTH_DIAGNOSIS'; id: string; field: keyof ToothDiagnosis; value: string }
   | { type: 'REMOVE_TOOTH_DIAGNOSIS'; id: string }
   | { type: 'UPDATE_CANAL_MAF'; canal: string; field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string | boolean }
+  | { type: 'ADD_TOOTH_TREATMENT_PLAN'; toothNumber?: string }
+  | { type: 'UPDATE_TOOTH_TREATMENT_PLAN'; id: string; field: keyof ToothTreatmentPlan; value: ToothTreatmentPlan[keyof ToothTreatmentPlan] }
+  | { type: 'REMOVE_TOOTH_TREATMENT_PLAN'; id: string }
+  | { type: 'UPDATE_TOOTH_TREATMENT_CANAL_MAF'; planId: string; canal: string; field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string | boolean }
   | { type: 'RESET_FORM' }
   | { type: 'APPLY_TEMPLATE'; noteData: NoteData }
   | { type: 'UPSERT_TEMPLATE'; template: Template }
   | { type: 'RENAME_TEMPLATE'; id: string; name: string }
   | { type: 'DELETE_TEMPLATE'; id: string }
   | { type: 'UPDATE_PREFERENCES'; preferences: Partial<Preferences> }
-  | { type: 'LOAD_STATE'; state: Partial<State> };
+  | { type: 'LOAD_STATE'; state: Partial<State> }
+  | { type: 'ADD_SAVED_DRAFT'; draft: SavedDraft }
+  | { type: 'DELETE_SAVED_DRAFT'; id: string };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -363,6 +463,90 @@ function reducer(state: State, action: Action): State {
         },
       };
 
+    case 'ADD_TOOTH_TREATMENT_PLAN':
+      return {
+        ...state,
+        noteData: {
+          ...state.noteData,
+          toothTreatmentPlans: [
+            ...state.noteData.toothTreatmentPlans,
+            createEmptyToothTreatmentPlan(action.toothNumber || ''),
+          ],
+        },
+      };
+
+    case 'UPDATE_TOOTH_TREATMENT_PLAN': {
+      const updatedPlans = state.noteData.toothTreatmentPlans.map((plan) => {
+        if (plan.id === action.id) {
+          const updated = { ...plan, [action.field]: action.value };
+          // Update tooth type if tooth number changed
+          if (action.field === 'toothNumber' && typeof action.value === 'string') {
+            updated.toothType = getToothType(action.value);
+          }
+          return updated;
+        }
+        return plan;
+      });
+      return {
+        ...state,
+        noteData: {
+          ...state.noteData,
+          toothTreatmentPlans: updatedPlans,
+        },
+      };
+    }
+
+    case 'REMOVE_TOOTH_TREATMENT_PLAN':
+      return {
+        ...state,
+        noteData: {
+          ...state.noteData,
+          toothTreatmentPlans: state.noteData.toothTreatmentPlans.filter((p) => p.id !== action.id),
+        },
+      };
+
+    case 'UPDATE_TOOTH_TREATMENT_CANAL_MAF': {
+      const updatedPlans = state.noteData.toothTreatmentPlans.map((plan) => {
+        if (plan.id === action.planId) {
+          const existingIndex = plan.canalMAFs.findIndex((m) => m.canal === action.canal);
+          let updatedMAFs: CanalMAF[];
+
+          if (existingIndex >= 0) {
+            updatedMAFs = plan.canalMAFs.map((m, i) =>
+              i === existingIndex ? { ...m, [action.field]: action.value } : m
+            );
+          } else {
+            updatedMAFs = [
+              ...plan.canalMAFs,
+              {
+                canal: action.canal,
+                patent: false,
+                workingLength: '',
+                referencePoint: '',
+                fileSystem: '',
+                size: '',
+                taper: '',
+                obturationTechnique: '',
+                obturationMaterial: '',
+                obturationSealer: '',
+                [action.field]: action.value,
+              },
+            ];
+          }
+
+          return { ...plan, canalMAFs: updatedMAFs };
+        }
+        return plan;
+      });
+      return {
+        ...state,
+        noteData: {
+          ...state.noteData,
+          toothTreatmentPlans: updatedPlans,
+        },
+      };
+    }
+
     case 'UPDATE_CANAL_MAF': {
       const existingIndex = state.noteData.canalMAFs.findIndex((m) => m.canal === action.canal);
       let updatedMAFs: CanalMAF[];
@@ -405,6 +589,7 @@ function reducer(state: State, action: Action): State {
         noteData: {
           ...initialNoteData,
           toothDiagnoses: [createEmptyToothDiagnosis()],
+          toothTreatmentPlans: [],
         },
       };
 
@@ -458,6 +643,21 @@ function reducer(state: State, action: Action): State {
         ...action.state,
       };
 
+    case 'ADD_SAVED_DRAFT': {
+      const newDrafts = [action.draft, ...state.savedDrafts];
+      // Keep only the last 5 drafts
+      return {
+        ...state,
+        savedDrafts: newDrafts.slice(0, 5),
+      };
+    }
+
+    case 'DELETE_SAVED_DRAFT':
+      return {
+        ...state,
+        savedDrafts: state.savedDrafts.filter((d) => d.id !== action.id),
+      };
+
     default:
       return state;
   }
@@ -467,6 +667,7 @@ interface NoteContextType {
   noteData: NoteData;
   templates: Template[];
   preferences: Preferences;
+  savedDrafts: SavedDraft[];
   noteOutputDraft: string | null;
   referralOutputDraft: string | null;
   hasPendingDraft: boolean;
@@ -475,6 +676,9 @@ interface NoteContextType {
   discardDraft: () => void;
   clearSavedDraft: () => void;
   clearDraftAndReset: () => void;
+  saveDraftToHistory: () => void;
+  loadDraftFromHistory: (draftId: string) => void;
+  deleteDraftFromHistory: (draftId: string) => void;
   setNoteOutputDraft: (text: string | null) => void;
   setReferralOutputDraft: (text: string | null) => void;
   updateField: <K extends keyof NoteData>(field: K, value: NoteData[K]) => void;
@@ -483,6 +687,10 @@ interface NoteContextType {
   updateToothDiagnosis: (id: string, field: keyof ToothDiagnosis, value: string) => void;
   removeToothDiagnosis: (id: string) => void;
   updateCanalMAF: (canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => void;
+  addToothTreatmentPlan: (toothNumber?: string) => void;
+  updateToothTreatmentPlan: <K extends keyof ToothTreatmentPlan>(id: string, field: K, value: ToothTreatmentPlan[K]) => void;
+  removeToothTreatmentPlan: (id: string) => void;
+  updateToothTreatmentCanalMAF: (planId: string, canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => void;
   resetForm: () => void;
   loadTemplate: (template: Template) => void;
   saveTemplate: (template: Template) => void;
@@ -561,11 +769,22 @@ const applyTemplateToNoteData = (
   return next;
 };
 
+// Helper to generate a preview string for a draft
+const generateDraftPreview = (noteData: NoteData): string => {
+  const parts: string[] = [];
+  if (noteData.patientName) parts.push(`Patient: ${noteData.patientName}`);
+  if (noteData.toothNumber) parts.push(`Tooth: #${noteData.toothNumber}`);
+  if (noteData.age) parts.push(`Age: ${noteData.age}`);
+  if (parts.length === 0) parts.push('Draft Note');
+  return parts.join(' | ');
+};
+
 export function NoteProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, {
     noteData: { ...initialNoteData, toothDiagnoses: [createEmptyToothDiagnosis()] },
     templates: [],
     preferences: initialPreferences,
+    savedDrafts: [],
   });
   const [outputEdits, setOutputEdits] = useState<OutputEdits>(initialOutputEdits);
   const [pendingDraft, setPendingDraft] = useState<NoteData | null>(null);
@@ -581,6 +800,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
         const normalizedTemplates = Array.isArray(parsed.templates)
           ? parsed.templates.map((template: Partial<Template>) => normalizeTemplate(template))
           : [];
+        const savedDrafts = Array.isArray(parsed.savedDrafts) ? parsed.savedDrafts : [];
         const storedNoteData = parsed.noteData ? normalizeNoteData(parsed.noteData) : undefined;
         const storedOutputEdits = normalizeOutputEdits(parsed.outputEdits);
         const hasStoredOutputEdits = Boolean(storedOutputEdits.noteText || storedOutputEdits.referralText);
@@ -589,6 +809,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
           state: {
             templates: normalizedTemplates,
             preferences: { ...initialPreferences, ...parsed.preferences },
+            savedDrafts,
           },
         });
         if ((storedNoteData && hasDraftContent(storedNoteData)) || hasStoredOutputEdits) {
@@ -607,7 +828,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Save to localStorage when templates, preferences, or note data change
+  // Save to localStorage when templates, preferences, note data, or saved drafts change
   useEffect(() => {
     if (!isDraftResolved) {
       return;
@@ -617,9 +838,10 @@ export function NoteProvider({ children }: { children: ReactNode }) {
       preferences: state.preferences,
       noteData: state.noteData,
       outputEdits,
+      savedDrafts: state.savedDrafts,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore));
-  }, [state.templates, state.preferences, state.noteData, outputEdits, isDraftResolved]);
+  }, [state.templates, state.preferences, state.noteData, outputEdits, state.savedDrafts, isDraftResolved]);
 
   // Apply dark mode class to document
   useEffect(() => {
@@ -652,6 +874,36 @@ export function NoteProvider({ children }: { children: ReactNode }) {
 
   const updateCanalMAF = (canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => {
     dispatch({ type: 'UPDATE_CANAL_MAF', canal, field, value });
+  };
+
+  const addToothTreatmentPlan = (toothNumber?: string) => {
+    dispatch({ type: 'ADD_TOOTH_TREATMENT_PLAN', toothNumber });
+  };
+
+  const updateToothTreatmentPlan = <K extends keyof ToothTreatmentPlan>(
+    id: string,
+    field: K,
+    value: ToothTreatmentPlan[K]
+  ) => {
+    dispatch({
+      type: 'UPDATE_TOOTH_TREATMENT_PLAN',
+      id,
+      field,
+      value: value as ToothTreatmentPlan[keyof ToothTreatmentPlan]
+    });
+  };
+
+  const removeToothTreatmentPlan = (id: string) => {
+    dispatch({ type: 'REMOVE_TOOTH_TREATMENT_PLAN', id });
+  };
+
+  const updateToothTreatmentCanalMAF = (
+    planId: string,
+    canal: string,
+    field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer',
+    value: string | boolean
+  ) => {
+    dispatch({ type: 'UPDATE_TOOTH_TREATMENT_CANAL_MAF', planId, canal, field, value });
   };
 
   const resetForm = () => {
@@ -694,6 +946,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     const dataToStore = {
       templates: state.templates,
       preferences: state.preferences,
+      savedDrafts: state.savedDrafts,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore));
     setPendingDraft(null);
@@ -713,6 +966,35 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     clearSavedDraft();
     setOutputEdits(initialOutputEdits);
     dispatch({ type: 'RESET_FORM' });
+  };
+
+  const saveDraftToHistory = () => {
+    if (!hasDraftContent(state.noteData) && !outputEdits.noteText && !outputEdits.referralText) {
+      return; // Don't save empty drafts
+    }
+    const draft: SavedDraft = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      timestamp: new Date().toISOString(),
+      noteData: cloneValue(state.noteData),
+      outputEdits: {
+        noteText: outputEdits.noteText,
+        referralText: outputEdits.referralText,
+      },
+      preview: generateDraftPreview(state.noteData),
+    };
+    dispatch({ type: 'ADD_SAVED_DRAFT', draft });
+  };
+
+  const loadDraftFromHistory = (draftId: string) => {
+    const draft = state.savedDrafts.find((d) => d.id === draftId);
+    if (draft) {
+      dispatch({ type: 'LOAD_STATE', state: { noteData: normalizeNoteData(draft.noteData) } });
+      setOutputEdits(draft.outputEdits);
+    }
+  };
+
+  const deleteDraftFromHistory = (draftId: string) => {
+    dispatch({ type: 'DELETE_SAVED_DRAFT', id: draftId });
   };
 
   const hasPendingDraft = (Boolean(pendingDraft) || Boolean(pendingOutputEdits)) && !isDraftResolved;
@@ -735,6 +1017,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
         noteData: state.noteData,
         templates: state.templates,
         preferences: state.preferences,
+        savedDrafts: state.savedDrafts,
         noteOutputDraft: outputEdits.noteText,
         referralOutputDraft: outputEdits.referralText,
         hasPendingDraft,
@@ -743,6 +1026,9 @@ export function NoteProvider({ children }: { children: ReactNode }) {
         discardDraft,
         clearSavedDraft,
         clearDraftAndReset,
+        saveDraftToHistory,
+        loadDraftFromHistory,
+        deleteDraftFromHistory,
         setNoteOutputDraft,
         setReferralOutputDraft,
         updateField,
@@ -751,6 +1037,10 @@ export function NoteProvider({ children }: { children: ReactNode }) {
         updateToothDiagnosis,
         removeToothDiagnosis,
         updateCanalMAF,
+        addToothTreatmentPlan,
+        updateToothTreatmentPlan,
+        removeToothTreatmentPlan,
+        updateToothTreatmentCanalMAF,
         resetForm,
         loadTemplate,
         saveTemplate,

@@ -145,6 +145,15 @@ export function generateSOAPNote(data: NoteData): string {
       }
     }
 
+    // Add chief complaint details if provided (even if 'other' wasn't selected)
+    if (data.chiefComplaintCustom && data.chiefComplaintCustom.trim() && !data.chiefComplaints.includes('other')) {
+      if (chiefComplaint) {
+        chiefComplaint += ` ${data.chiefComplaintCustom.trim()}.`;
+      } else {
+        chiefComplaint = data.chiefComplaintCustom.trim() + '.';
+      }
+    }
+
     // Pain characteristics - structured sentence
     if (data.painCharacteristics.length > 0) {
       const selectedValues = data.painCharacteristics;
@@ -152,7 +161,7 @@ export function generateSOAPNote(data: NoteData): string {
       const valueToLabel = (value?: string) =>
         value ? getLabel(painCharacteristics, value).toLowerCase() : undefined;
 
-      const char = valueToLabel(findFirstValue(['sharp', 'dull', 'throbbing'])) || 'pain';
+      const char = valueToLabel(findFirstValue(['sharp', 'dull', 'throbbing']));
       const onset = valueToLabel(findFirstValue(['spontaneous', 'provoked', 'wakes_from_sleep']));
       const loc = valueToLabel(findFirstValue(['localized', 'radiating', 'diffuse']));
       const dur = valueToLabel(findFirstValue(['constant', 'intermittent', 'lingering']));
@@ -176,17 +185,34 @@ export function generateSOAPNote(data: NoteData): string {
         historyLabel = data.painHistoryOther.trim().toLowerCase();
       }
 
-      const parts: string[] = [];
-      parts.push(char);
-      if (onset) parts.push(onset);
-      if (loc) parts.push(loc);
-      if (dur) parts.push(dur);
-      if (severity) parts.push(severity);
-      if (pattern) parts.push(pattern);
-      if (assoc) parts.push(assoc);
+      // Build sentence: "Patient reports <char>, <onset>, <loc>, <dur>, <severity> pain, that is <pattern>, <assoc>, and has been around for <history>"
+      const beforePain: string[] = [];
+      if (char) beforePain.push(char);
+      if (onset) beforePain.push(onset);
+      if (loc) beforePain.push(loc);
+      if (dur) beforePain.push(dur);
+      if (severity) beforePain.push(severity);
 
-      const historyText = historyLabel ? ` that has been around for ${historyLabel}` : '';
-      chiefComplaint += ` Reports ${joinList(parts)} pain${historyText}.`;
+      const afterPain: string[] = [];
+      if (pattern) afterPain.push(pattern);
+      if (assoc) afterPain.push(assoc);
+
+      let painSentence = 'Patient reports ';
+      if (beforePain.length > 0) {
+        painSentence += beforePain.join(', ') + ' pain';
+      } else {
+        painSentence += 'pain';
+      }
+
+      if (afterPain.length > 0) {
+        painSentence += ', that is ' + afterPain.join(', ');
+      }
+
+      if (historyLabel) {
+        painSentence += ', and has been around for ' + historyLabel;
+      }
+
+      chiefComplaint += ` ${painSentence}.`;
     } else if (data.painDuration && data.painDuration !== 'na') {
       if (data.painDuration === 'other' && data.painDurationCustom) {
         chiefComplaint += ` Duration: ${data.painDurationCustom}.`;
@@ -346,7 +372,12 @@ export function generateSOAPNote(data: NoteData): string {
 
   // Treatment Options Offered
   if (data.treatmentOptionsOffered.length > 0) {
-    const options = getLabels(treatmentOptionsOffered, data.treatmentOptionsOffered);
+    const options = data.treatmentOptionsOffered.map((opt) => {
+      if (opt === 'other' && data.treatmentOptionsOfferedOther) {
+        return data.treatmentOptionsOfferedOther;
+      }
+      return getLabel(treatmentOptionsOffered, opt);
+    });
     lines.push(`Treatment options offered: ${joinList(options)}`);
   }
 
@@ -436,8 +467,113 @@ export function generateSOAPNote(data: NoteData): string {
     lines.push(`Isolation: ${getLabel(isolationMethods, data.isolation)}`);
   }
 
-  // Canal configuration
-  if (data.canalConfiguration.length > 0) {
+  // === PER-TOOTH TREATMENT ===
+  // If we have tooth treatment plans, output them
+  if (data.toothTreatmentPlans && data.toothTreatmentPlans.length > 0) {
+    lines.push('');
+    data.toothTreatmentPlans.forEach((plan) => {
+      if (plan.toothNumber) {
+        lines.push(`Tooth #${plan.toothNumber}:`);
+
+        // Canal configuration
+        if (plan.canalConfiguration.length > 0) {
+          const configs = getLabels(canalConfigurations, plan.canalConfiguration);
+          let canalText = joinList(configs);
+
+          // If "other" is selected and custom canals are specified, append them
+          if (plan.canalConfiguration.includes('other') && plan.customCanalNames.length > 0) {
+            const customCanals = plan.customCanalNames.filter(name => name.trim());
+            if (customCanals.length > 0) {
+              // Replace "Other (custom)" with the actual canal names
+              const nonOtherConfigs = configs.filter(c => c !== 'Other (custom)');
+              canalText = nonOtherConfigs.length > 0
+                ? `${joinList(nonOtherConfigs)}, ${joinList(customCanals)}`
+                : joinList(customCanals);
+            }
+          }
+
+          lines.push(`  Canals: ${canalText}`);
+        }
+
+        // Working length method
+        if (plan.workingLengthMethod.length > 0) {
+          lines.push(`  Working length: ${joinList(getLabels(workingLengthMethods, plan.workingLengthMethod))}`);
+        }
+
+        // Per-canal details
+        if (plan.canalMAFs.length > 0) {
+          // Get all valid canals from selected configurations
+          const validCanals = new Set<string>();
+          plan.canalConfiguration.forEach((config) => {
+            if (config === 'other') {
+              plan.customCanalNames.forEach((canal) => {
+                if (canal.trim()) validCanals.add(canal.trim());
+              });
+            } else {
+              const canals = canalConfigurationToCanals[config];
+              if (canals) {
+                canals.forEach((canal) => validCanals.add(canal));
+              }
+            }
+          });
+
+          const canalDetails = plan.canalMAFs
+            .filter((m) => (m.workingLength || m.referencePoint || m.fileSystem || m.size || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal))
+            .map((m) => {
+              const parts: string[] = [];
+
+              // Patent status
+              const patentStatus = m.patent ? 'Patent' : 'Not Patent';
+              parts.push(patentStatus);
+
+              // Working length and reference point
+              if (m.workingLength) {
+                let wlText = `WL: ${m.workingLength}mm`;
+                if (m.referencePoint) {
+                  wlText += ` from ${m.referencePoint}`;
+                }
+                parts.push(wlText);
+              }
+
+              // Instrumentation details
+              const instrParts: string[] = [];
+              if (m.fileSystem) instrParts.push(getLabel(instrumentationSystems, m.fileSystem));
+              if (m.size) instrParts.push(getLabel(mafSizes, m.size));
+              if (m.taper) instrParts.push(getLabel(mafTapers, m.taper));
+              if (instrParts.length > 0) {
+                parts.push(`Prep: ${instrParts.join(' ')}`);
+              }
+
+              // Obturation details
+              const obtParts: string[] = [];
+              if (m.obturationTechnique) obtParts.push(getLabel(obturationTechniques, m.obturationTechnique));
+              if (m.obturationMaterial) obtParts.push(getLabel(obturationMaterials, m.obturationMaterial));
+              if (m.obturationSealer) obtParts.push(`Sealer: ${getLabel(obturationSealers, m.obturationSealer)}`);
+              if (obtParts.length > 0) {
+                parts.push(`Obt: ${obtParts.join(' with ')}`);
+              }
+
+              return `    ${m.canal} - ${parts.join('; ')}`;
+            });
+
+          if (canalDetails.length > 0) {
+            lines.push('  Per-canal details:');
+            canalDetails.forEach((detail) => lines.push(detail));
+          }
+        }
+
+        // Restoration
+        if (plan.restoration) {
+          lines.push(`  Restoration: ${getLabel(restorationTypes, plan.restoration)}`);
+        }
+
+        lines.push('');
+      }
+    });
+  } else {
+    // === LEGACY SINGLE-TOOTH FORMAT (for backward compatibility) ===
+    // Canal configuration
+    if (data.canalConfiguration.length > 0) {
     const configs = getLabels(canalConfigurations, data.canalConfiguration);
     let canalText = joinList(configs);
 
@@ -530,6 +666,12 @@ export function generateSOAPNote(data: NoteData): string {
     }
   }
 
+  // Restoration (legacy single-tooth)
+  if (data.restoration) {
+    lines.push(`Restoration: ${getLabel(restorationTypes, data.restoration)}`);
+  }
+  } // End of legacy format else block
+
   // Irrigation
   if (data.irrigationProtocol.length > 0) {
     const allOptions = [...irrigationSolutions, ...irrigationTechniques];
@@ -543,11 +685,6 @@ export function generateSOAPNote(data: NoteData): string {
   // Medicament
   if (data.medicament && data.medicament !== 'none') {
     lines.push(`Medicament: ${getLabel(medicaments, data.medicament)}`);
-  }
-
-  // Restoration
-  if (data.restoration) {
-    lines.push(`Restoration: ${getLabel(restorationTypes, data.restoration)}`);
   }
 
   // Complications

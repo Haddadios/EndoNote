@@ -70,20 +70,29 @@ export const fdiTeeth: SelectOption[] = [
   { value: '48', label: '48 - LR 3rd Molar' },
 ];
 
-// Map tooth number to type (universal notation)
+// Map tooth number to type (handles both universal and FDI notation)
 export function getToothType(toothNumber: string): ToothType {
   const num = parseInt(toothNumber, 10);
 
-  // Anteriors: centrals, laterals, canines
-  const anteriors = [6, 7, 8, 9, 10, 11, 22, 23, 24, 25, 26, 27];
-  // Premolars
-  const premolars = [4, 5, 12, 13, 20, 21, 28, 29];
-  // Molars
-  const molars = [1, 2, 3, 14, 15, 16, 17, 18, 19, 30, 31, 32];
+  // Universal notation (1-32)
+  const universalAnteriors = [6, 7, 8, 9, 10, 11, 22, 23, 24, 25, 26, 27];
+  const universalPremolars = [4, 5, 12, 13, 20, 21, 28, 29];
+  const universalMolars = [1, 2, 3, 14, 15, 16, 17, 18, 19, 30, 31, 32];
 
-  if (anteriors.includes(num)) return 'anterior';
-  if (premolars.includes(num)) return 'premolar';
-  if (molars.includes(num)) return 'molar';
+  // FDI notation (11-48)
+  const fdiAnteriors = [11, 12, 13, 21, 22, 23, 31, 32, 33, 41, 42, 43];
+  const fdiPremolars = [14, 15, 24, 25, 34, 35, 44, 45];
+  const fdiMolars = [16, 17, 18, 26, 27, 28, 36, 37, 38, 46, 47, 48];
+
+  // Check Universal notation first
+  if (universalAnteriors.includes(num)) return 'anterior';
+  if (universalPremolars.includes(num)) return 'premolar';
+  if (universalMolars.includes(num)) return 'molar';
+
+  // Check FDI notation
+  if (fdiAnteriors.includes(num)) return 'anterior';
+  if (fdiPremolars.includes(num)) return 'premolar';
+  if (fdiMolars.includes(num)) return 'molar';
 
   return 'molar'; // default
 }
@@ -93,3 +102,36 @@ export const toothTypeLabels: Record<ToothType, string> = {
   premolar: 'Premolar',
   molar: 'Molar',
 };
+
+// Mapping from Universal to FDI notation
+const universalToFdiMap: Record<string, string> = {
+  '1': '18', '2': '17', '3': '16', '4': '15', '5': '14', '6': '13', '7': '12', '8': '11',
+  '9': '21', '10': '22', '11': '23', '12': '24', '13': '25', '14': '26', '15': '27', '16': '28',
+  '17': '38', '18': '37', '19': '36', '20': '35', '21': '34', '22': '33', '23': '32', '24': '31',
+  '25': '41', '26': '42', '27': '43', '28': '44', '29': '45', '30': '46', '31': '47', '32': '48',
+};
+
+// Mapping from FDI to Universal notation
+const fdiToUniversalMap: Record<string, string> = {
+  '18': '1', '17': '2', '16': '3', '15': '4', '14': '5', '13': '6', '12': '7', '11': '8',
+  '21': '9', '22': '10', '23': '11', '24': '12', '25': '13', '26': '14', '27': '15', '28': '16',
+  '38': '17', '37': '18', '36': '19', '35': '20', '34': '21', '33': '22', '32': '23', '31': '24',
+  '41': '25', '42': '26', '43': '27', '44': '28', '45': '29', '46': '30', '47': '31', '48': '32',
+};
+
+// Convert tooth number from one notation to another
+export function convertToothNumber(
+  toothNumber: string,
+  fromNotation: 'universal' | 'fdi',
+  toNotation: 'universal' | 'fdi'
+): string {
+  if (!toothNumber || fromNotation === toNotation) return toothNumber;
+
+  if (fromNotation === 'universal' && toNotation === 'fdi') {
+    return universalToFdiMap[toothNumber] || toothNumber;
+  } else if (fromNotation === 'fdi' && toNotation === 'universal') {
+    return fdiToUniversalMap[toothNumber] || toothNumber;
+  }
+
+  return toothNumber;
+}

@@ -7,7 +7,7 @@ import {
   PlanSection,
   ReferralSection,
 } from './components/forms';
-import { NoteOutput, ReferralLetterOutput, TemplateManager } from './components/output';
+import { NoteOutput, ReferralLetterOutput } from './components/output';
 
 function App() {
   return (
@@ -35,7 +35,7 @@ function App() {
               </div>
             </div>
 
-            {/* Right Column - Output and Templates (1/3 width) */}
+            {/* Right Column - Output (1/3 width) */}
             <div className="lg:col-span-1">
               <div className="lg:sticky lg:top-8 space-y-6">
                 <NoteOutput />
@@ -43,7 +43,6 @@ function App() {
                   <ReferralSection />
                 </div>
                 <ReferralLetterOutput />
-                <TemplateManager />
               </div>
             </div>
           </div>

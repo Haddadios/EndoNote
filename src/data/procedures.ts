@@ -122,5 +122,6 @@ export const treatmentOptionsOffered: SelectOption[] = [
   { value: 'extraction', label: 'Extraction' },
   { value: 'no_treatment_monitoring', label: 'No treatment & Monitoring' },
   { value: 'trauma', label: 'Trauma Management' },
+  { value: 'no_treatment', label: 'No Treatment' },
   { value: 'other', label: 'Other' },
 ];

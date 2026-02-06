@@ -79,10 +79,10 @@ export function Odontogram({ selectedTeeth, onToothSelect, notation = 'universal
   };
 
   const ToothButton = ({ toothNumber }: { toothNumber: string }) => {
-    const selected = isSelected(toothNumber);
+    const displayNum = getDisplayNumber(toothNumber);
+    const selected = isSelected(displayNum);
     const hovered = hoveredTooth === toothNumber;
     const toothName = getToothName(toothNumber);
-    const displayNum = getDisplayNumber(toothNumber);
     const imagePath = getToothImagePath(toothNumber);
 
     return (
@@ -91,10 +91,10 @@ export function Odontogram({ selectedTeeth, onToothSelect, notation = 'universal
         <div className={`text-xs font-medium ${selected ? 'text-blue-600' : 'text-gray-500'}`}>
           {displayNum}
         </div>
-        
+
         {/* Tooth visual with actual image */}
         <button
-          onClick={() => onToothSelect(toothNumber)}
+          onClick={() => onToothSelect(displayNum)}
           onMouseEnter={() => setHoveredTooth(toothNumber)}
           onMouseLeave={() => setHoveredTooth(null)}
           className={`

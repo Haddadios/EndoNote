@@ -1,7 +1,32 @@
 import { useNote } from '../../context/NoteContext';
+import { DraftHistory } from './DraftHistory';
+import { TemplateDropdown } from './TemplateDropdown';
+import { convertToothNumber } from '../../data';
+import type { ToothNotation } from '../../types';
 
 export function Header() {
-  const { preferences, updatePreferences, hasSavedDraft, clearSavedDraft, clearDraftAndReset } = useNote();
+  const { noteData, preferences, updatePreferences, hasSavedDraft, clearSavedDraft, clearDraftAndReset, saveDraftToHistory, resetForm, updateTooth, updateToothDiagnosis } = useNote();
+
+  const handleNotationChange = (newNotation: ToothNotation) => {
+    const oldNotation = preferences.toothNotation;
+
+    // Update preference
+    updatePreferences({ toothNotation: newNotation });
+
+    // Convert primary tooth number
+    if (noteData.toothNumber) {
+      const convertedTooth = convertToothNumber(noteData.toothNumber, oldNotation, newNotation);
+      updateTooth(convertedTooth);
+    }
+
+    // Convert all tooth diagnoses
+    noteData.toothDiagnoses.forEach((diagnosis) => {
+      if (diagnosis.toothNumber) {
+        const convertedTooth = convertToothNumber(diagnosis.toothNumber, oldNotation, newNotation);
+        updateToothDiagnosis(diagnosis.id, 'toothNumber', convertedTooth);
+      }
+    });
+  };
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
@@ -19,11 +44,7 @@ export function Header() {
               <span>Tooth Notation:</span>
               <select
                 value={preferences.toothNotation}
-                onChange={(e) =>
-                  updatePreferences({
-                    toothNotation: e.target.value as 'universal' | 'fdi',
-                  })
-                }
+                onChange={(e) => handleNotationChange(e.target.value as ToothNotation)}
                 className="px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="universal">Universal (1-32)</option>
@@ -49,6 +70,28 @@ export function Header() {
                 </button>
               </>
             )}
+
+            <button
+              type="button"
+              onClick={saveDraftToHistory}
+              className="px-3 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              title="Save current state to draft history"
+            >
+              Save Draft
+            </button>
+
+            <DraftHistory />
+
+            <TemplateDropdown />
+
+            <button
+              type="button"
+              onClick={resetForm}
+              className="px-3 py-2 text-sm font-medium rounded-md bg-gray-600 text-white hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600"
+              title="Reset form to defaults"
+            >
+              Reset Form
+            </button>
 
             <button
               onClick={() => updatePreferences({ darkMode: !preferences.darkMode })}

@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { useNote } from '../../context/NoteContext';
-import { Dropdown, CheckboxGroup, Checkbox, TextInput } from '../common';
+import { CheckboxGroup, Checkbox, TextInput, Odontogram } from '../common';
 import {
   vitalityResults,
   percussionPalpationResults,
   mobilityGrades,
   swellingOptions,
   radiographicFindings,
-  universalTeeth,
-  fdiTeeth,
   toothTypeLabels,
 } from '../../data';
 
 export function ObjectiveSection() {
-  const { noteData, preferences, updateField, updateTooth } = useNote();
+  const { noteData, preferences, updateField, updateTooth, addToothDiagnosis, updateToothDiagnosis, removeToothDiagnosis } = useNote();
   const [clearedState, setClearedState] = useState<{
     toothNumber: string;
     coldTest: string[];
@@ -33,8 +31,47 @@ export function ObjectiveSection() {
   } | null>(null);
   const [showUndo, setShowUndo] = useState(false);
 
-  const teethOptions = preferences.toothNotation === 'universal' ? universalTeeth : fdiTeeth;
   const isFirstVisit = noteData.visitType === 'first_visit';
+
+  // Get list of teeth that have diagnoses (for multi-selection)
+  const selectedTeeth = noteData.toothDiagnoses
+    .filter(d => d.toothNumber)
+    .map(d => d.toothNumber);
+
+  // Handle tooth selection from odontogram (supports multiple teeth)
+  const handleToothSelect = (toothNumber: string) => {
+    const existingDiagnosis = noteData.toothDiagnoses.find(d => d.toothNumber === toothNumber);
+
+    if (existingDiagnosis) {
+      // Clicking same tooth again - deselect it (toggle off)
+      if (noteData.toothDiagnoses.length > 1) {
+        removeToothDiagnosis(existingDiagnosis.id);
+        // Update primary tooth to the first remaining tooth
+        const remaining = noteData.toothDiagnoses.find((d) => d.toothNumber && d.id !== existingDiagnosis.id);
+        updateTooth(remaining?.toothNumber || '');
+      } else {
+        // If it's the only diagnosis, just clear the tooth number instead of removing
+        updateToothDiagnosis(existingDiagnosis.id, 'toothNumber', '');
+        updateTooth('');
+      }
+    } else {
+      // Clicking a different tooth - add it to selection
+      const emptyDiagnosis = noteData.toothDiagnoses.find(d => !d.toothNumber);
+
+      if (emptyDiagnosis) {
+        // Use the first empty slot
+        updateToothDiagnosis(emptyDiagnosis.id, 'toothNumber', toothNumber);
+      } else {
+        // No empty slots, add a new diagnosis entry with the tooth number
+        addToothDiagnosis(toothNumber);
+      }
+
+      // Update primary tooth if none is set
+      if (!noteData.toothNumber) {
+        updateTooth(toothNumber);
+      }
+    }
+  };
 
   if (!isFirstVisit) {
     return null;
@@ -128,22 +165,48 @@ export function ObjectiveSection() {
         </div>
       )}
 
-      <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-2 mb-2">Tooth Information</h3>
-      <Dropdown
-        label="Tooth Number"
-        value={noteData.toothNumber}
-        options={teethOptions}
-        onChange={updateTooth}
-        placeholder="Select tooth..."
-        required
-      />
-
-      {noteData.toothNumber && (
-        <div className="mt-2 mb-4 p-2 bg-gray-50 dark:bg-gray-700 rounded text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Tooth Type: </span>
-          <span className="font-medium text-gray-900 dark:text-gray-100">{toothTypeLabels[noteData.toothType]}</span>
-        </div>
-      )}
+      {/* Odontogram for tooth selection */}
+      <div className="mb-6">
+        <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mb-3">Select Teeth (click to select/deselect)</h3>
+        <Odontogram
+          selectedTeeth={selectedTeeth}
+          onToothSelect={handleToothSelect}
+          notation={preferences.toothNotation}
+        />
+        {selectedTeeth.length > 0 && (
+          <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-sm border border-blue-200 dark:border-blue-800">
+            <span className="text-blue-700 dark:text-blue-300 font-medium">
+              Selected {selectedTeeth.length === 1 ? 'Tooth' : 'Teeth'}:
+            </span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {selectedTeeth.map((tooth) => {
+                const toothType = noteData.toothDiagnoses.find(d => d.toothNumber === tooth)?.toothType;
+                return (
+                  <span
+                    key={tooth}
+                    className="inline-flex items-center gap-2 px-3 py-1 bg-blue-600 dark:bg-blue-700 text-white rounded-full text-xs font-medium"
+                  >
+                    #{tooth}
+                    {toothType && (
+                      <span className="text-blue-200 dark:text-blue-300">({toothTypeLabels[toothType]})</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleToothSelect(tooth)}
+                      className="ml-1 hover:bg-blue-700 dark:hover:bg-blue-800 rounded-full p-0.5"
+                      title="Remove tooth"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
 
       <>
           <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-4 mb-2">Vitality Tests</h3>

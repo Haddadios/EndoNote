@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNote } from '../../context/NoteContext';
-import { Dropdown, Odontogram } from '../common';
+import { Dropdown } from '../common';
 import {
   universalTeeth,
   fdiTeeth,
@@ -109,11 +109,6 @@ export function AssessmentSection() {
 
   const teethOptions = preferences.toothNotation === 'universal' ? universalTeeth : fdiTeeth;
 
-  // Get list of teeth that have diagnoses
-  const selectedTeeth = noteData.toothDiagnoses
-    .filter(d => d.toothNumber)
-    .map(d => d.toothNumber);
-
   const createEmptyDiagnosis = (): ToothDiagnosis => ({
     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
     toothNumber: '',
@@ -145,37 +140,6 @@ export function AssessmentSection() {
     updateField('assessmentNotes', clearedState.assessmentNotes);
     updateTooth(clearedState.toothNumber);
     setShowUndo(false);
-  };
-
-  // Handle tooth selection from odontogram
-  const handleToothSelect = (toothNumber: string) => {
-    const existingDiagnosis = noteData.toothDiagnoses.find(d => d.toothNumber === toothNumber);
-    
-    if (existingDiagnosis) {
-      // Clicking same tooth again - deselect it (toggle off)
-      if (noteData.toothDiagnoses.length > 1) {
-        removeToothDiagnosis(existingDiagnosis.id);
-        const remaining = noteData.toothDiagnoses.find((d) => d.toothNumber && d.id !== existingDiagnosis.id);
-        updateTooth(remaining?.toothNumber || '');
-      } else {
-        // If it's the only diagnosis, just clear the tooth number instead of removing
-        updateToothDiagnosis(existingDiagnosis.id, 'toothNumber', '');
-        updateTooth('');
-      }
-    } else {
-      // Clicking a different tooth - add it to selection
-      const emptyDiagnosis = noteData.toothDiagnoses.find(d => !d.toothNumber);
-      
-      if (emptyDiagnosis) {
-        // Use the first empty slot
-        updateToothDiagnosis(emptyDiagnosis.id, 'toothNumber', toothNumber);
-      } else {
-        // No empty slots, add a new diagnosis entry with the tooth number
-        addToothDiagnosis(toothNumber);
-      }
-
-      updateTooth(toothNumber);
-    }
   };
 
   // If no primary tooth is set, mirror from first diagnosis so outputs stay consistent
@@ -211,15 +175,6 @@ export function AssessmentSection() {
           </button>
         </div>
       )}
-
-      {/* Odontogram */}
-      <div className="mb-6">
-        <Odontogram
-          selectedTeeth={selectedTeeth}
-          onToothSelect={handleToothSelect}
-          notation={preferences.toothNotation}
-        />
-      </div>
 
       {/* Tooth Diagnoses */}
       <div className="mb-4">
