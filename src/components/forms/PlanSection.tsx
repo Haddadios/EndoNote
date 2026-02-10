@@ -482,6 +482,7 @@ export function PlanSection() {
       {/* Treatment Options Offered */}
       <CheckboxGroup
         label="Treatment Options Offered"
+        sectionLabel
         options={treatmentOptionsOffered}
         selectedValues={noteData.treatmentOptionsOffered}
         onChange={(values) => updateField('treatmentOptionsOffered', values)}
@@ -522,40 +523,43 @@ export function PlanSection() {
       </div>
 
       {/* Anesthesia */}
-      <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-2 mb-2">Anesthesia</h3>
-
-      {/* Anesthesia Type with Carpule Inputs */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Anesthesia Type & Amount (carpules)
-        </label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {anesthesiaTypes.map((type) => {
-            const key = type.value as keyof AnesthesiaAmounts;
-            const amount = noteData.anesthesiaAmounts[key] || '';
-            return (
-              <div key={type.value} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={amount}
-                  onChange={(e) => handleAnesthesiaAmountChange(key, e.target.value)}
-                  placeholder="0"
-                  className="w-16 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{type.label}</span>
-              </div>
-            );
-          })}
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden mt-2 mb-4">
+        <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+          <span className="text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-200 uppercase">Anesthesia</span>
+        </div>
+        <div className="p-3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Type & Amount (carpules)
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {anesthesiaTypes.map((type) => {
+              const key = type.value as keyof AnesthesiaAmounts;
+              const amount = noteData.anesthesiaAmounts[key] || '';
+              return (
+                <div key={type.value} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={amount}
+                    onChange={(e) => handleAnesthesiaAmountChange(key, e.target.value)}
+                    placeholder="0"
+                    className="w-16 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{type.label}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Anesthesia Location/Technique */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Location/Technique
-        </label>
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden mb-4">
+        <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+          <span className="text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-200 uppercase">Location/Technique</span>
+        </div>
+        <div className="p-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {anesthesiaLocations.map((location) => {
             const isSelected = noteData.anesthesiaLocations.includes(location.value);
@@ -641,11 +645,13 @@ export function PlanSection() {
             );
           })}
         </div>
+        </div>
       </div>
 
       {/* Isolation */}
       <CheckboxGroup
         label="Isolation"
+        sectionLabel
         options={isolationMethods}
         selectedValues={noteData.isolation}
         onChange={(values) => updateField('isolation', values)}
@@ -1068,6 +1074,7 @@ export function PlanSection() {
       {/* Irrigation */}
       <CheckboxGroup
         label="Irrigation Protocol"
+        sectionLabel
         mainOptions={irrigationMainOptions}
         moreOptions={irrigationMoreOptions}
         selectedValues={noteData.irrigationProtocol}
@@ -1104,9 +1111,12 @@ export function PlanSection() {
       )}
 
       {/* Complications */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Complications</label>
-        <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden mb-4">
+        <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+          <span className="text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-200 uppercase">Complications</span>
+        </div>
+        <div className="p-3">
+        <div className="flex items-center gap-2">
           <span className="text-sm text-gray-700 dark:text-gray-300 mr-2">Were there any complications?</span>
           <button
             type="button"
@@ -1138,6 +1148,7 @@ export function PlanSection() {
             No
           </button>
         </div>
+        </div>
       </div>
 
       {hasComplications && (
@@ -1164,6 +1175,7 @@ export function PlanSection() {
       {/* Post-op Instructions */}
       <CheckboxGroup
         label="Post-op Instructions"
+        sectionLabel
         options={postOpInstructions}
         selectedValues={noteData.postOpInstructions}
         onChange={(values) => updateField('postOpInstructions', values)}
@@ -1187,6 +1199,7 @@ export function PlanSection() {
       {/* Next Visit */}
       <CheckboxGroup
         label="Next Visit"
+        sectionLabel
         options={nextVisitOptions}
         selectedValues={noteData.nextVisit}
         onChange={(values) => updateField('nextVisit', values)}

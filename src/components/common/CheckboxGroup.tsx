@@ -3,6 +3,7 @@ import type { SelectOption, SelectOptionGroup } from '../../types';
 
 interface CheckboxGroupProps {
   label: string;
+  sectionLabel?: boolean;
   options?: SelectOption[];
   mainOptions?: SelectOption[];
   moreOptions?: SelectOption[];
@@ -21,6 +22,7 @@ interface CheckboxGroupProps {
 
 export function CheckboxGroup({
   label,
+  sectionLabel = false,
   options,
   mainOptions,
   moreOptions,
@@ -99,22 +101,35 @@ export function CheckboxGroup({
   };
 
   return (
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        {label}
-      </label>
+    <div className={`mb-4${sectionLabel ? ' border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden' : ''}`}>
+      {sectionLabel ? (
+        <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+          <span className="text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-200 uppercase">
+            {label}
+          </span>
+        </div>
+      ) : (
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {label}
+        </label>
+      )}
+      <div className={sectionLabel ? 'p-3' : ''}>
       {useGrouped ? (
         <div className={`grid ${gridCols[columns]} gap-3`}>
           {groups!.map((group) => (
             <div
               key={group.label}
-              className={`border border-gray-200 dark:border-gray-700 rounded-md p-3 bg-white dark:bg-gray-800 ${groupSpans[group.colSpan || 1]}`}
+              className={`border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden bg-white dark:bg-gray-800 ${groupSpans[group.colSpan || 1]}`}
             >
-              <div className="text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400 uppercase">
-                {group.label}
+              <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                <span className="text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-200 uppercase">
+                  {group.label}
+                </span>
               </div>
-              <div className={`mt-2 ${groupCols[group.columns || 1]}`}>
-                {group.options.map(renderCheckbox)}
+              <div className="p-3">
+                <div className={`${groupCols[group.columns || 1]}`}>
+                  {group.options.map(renderCheckbox)}
+                </div>
               </div>
             </div>
           ))}
@@ -135,6 +150,7 @@ export function CheckboxGroup({
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

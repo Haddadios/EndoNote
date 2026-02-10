@@ -228,6 +228,7 @@ export function SubjectiveSection() {
         <>
           <CheckboxGroup
             label="Medical History Alerts"
+            sectionLabel
             mainOptions={medicalHistoryMainOptions}
             moreOptions={medicalHistoryMoreOptions}
             selectedValues={noteData.medicalHistoryAlerts}
@@ -246,6 +247,7 @@ export function SubjectiveSection() {
 
           <CheckboxGroup
             label="Chief Complaint(s)"
+            sectionLabel
             mainOptions={chiefComplaintMainOptions}
             moreOptions={chiefComplaintMoreOptions}
             selectedValues={noteData.chiefComplaints}

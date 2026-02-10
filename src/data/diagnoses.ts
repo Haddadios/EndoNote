@@ -98,23 +98,119 @@ export const swellingGroups: SelectOptionGroup[] = [
   },
 ];
 
-// Radiographic Findings
+// Radiographic Findings — flat array used by soapGenerator for label resolution
 export const radiographicFindings: SelectOption[] = [
+  // Periapical Status
   { value: 'wnl', label: 'WNL - no periapical pathology' },
   { value: 'parl', label: 'Periapical radiolucency (PARL)' },
   { value: 'widened_pdl', label: 'Widened PDL space' },
   { value: 'loss_lamina_dura', label: 'Loss of lamina dura' },
-  { value: 'calcified_canals', label: 'Calcified/obliterated canals' },
+  { value: 'periapical_sclerosis', label: 'Periapical sclerosis / condensing osteitis' },
+  { value: 'hypercementosis', label: 'Hypercementosis' },
+  { value: 'apical_root_resorption', label: 'Apical root resorption' },
+  // Canal / Pulp Space
+  { value: 'calcified_canals', label: 'Calcified canals' },
+  { value: 'obliterated_canals', label: 'Obliterated canals' },
   { value: 'internal_resorption', label: 'Internal resorption' },
+  { value: 'pulp_stones', label: 'Pulp stones / calcifications' },
+  { value: 'canal_curvature', label: 'Significant canal curvature' },
+  { value: 'open_apex', label: 'Open/immature apex' },
+  { value: 'dens_invaginatus', label: 'Dens invaginatus' },
+  // Root Structure
   { value: 'external_resorption', label: 'External resorption' },
+  { value: 'vertical_root_fracture', label: 'Possible vertical root fracture' },
+  { value: 'root_dilaceration', label: 'Root dilaceration' },
+  { value: 'root_resorption_unspecified', label: 'Root resorption – unspecified location' },
+  { value: 'fused_roots', label: 'Fused roots / taurodontism' },
+  { value: 'accessory_root', label: 'Accessory/supernumerary root' },
+  // Bone / Alveolar
   { value: 'periapical_lesion', label: 'Periapical lesion' },
+  { value: 'furcation_bone_loss', label: 'Furcation bone loss' },
+  { value: 'alveolar_bone_loss', label: 'Generalized alveolar bone loss' },
+  { value: 'sinus_proximity', label: 'Proximity to maxillary sinus' },
+  { value: 'through_and_through', label: 'Through-and-through lesion' },
+  // Prior Treatment
   { value: 'previous_rct', label: 'Previous RCT present' },
   { value: 'short_fill', label: 'Short fill (previous RCT)' },
   { value: 'overfill', label: 'Overfill/overextension (previous RCT)' },
   { value: 'missed_canal', label: 'Possible missed canal' },
   { value: 'separated_instrument', label: 'Separated instrument' },
   { value: 'perforation', label: 'Perforation' },
-  { value: 'vertical_root_fracture', label: 'Possible vertical root fracture' },
+  { value: 'post_present', label: 'Post / post-and-core present' },
+  { value: 'ledge_transport', label: 'Ledge / canal transportation' },
+  { value: 'bioceramic_mta_present', label: 'Bioceramic/MTA repair material present' },
+];
+
+export const radiographicFindingsGroups: SelectOptionGroup[] = [
+  {
+    label: 'Periapical Status',
+    colSpan: 2,
+    columns: 2,
+    options: [
+      { value: 'wnl', label: 'WNL - no periapical pathology' },
+      { value: 'parl', label: 'Periapical radiolucency (PARL)' },
+      { value: 'widened_pdl', label: 'Widened PDL space' },
+      { value: 'loss_lamina_dura', label: 'Loss of lamina dura' },
+      { value: 'periapical_sclerosis', label: 'Periapical sclerosis / condensing osteitis' },
+      { value: 'hypercementosis', label: 'Hypercementosis' },
+      { value: 'apical_root_resorption', label: 'Apical root resorption' },
+    ],
+  },
+  {
+    label: 'Canal / Pulp Space',
+    colSpan: 2,
+    columns: 2,
+    options: [
+      { value: 'calcified_canals', label: 'Calcified canals' },
+      { value: 'obliterated_canals', label: 'Obliterated canals' },
+      { value: 'internal_resorption', label: 'Internal resorption' },
+      { value: 'pulp_stones', label: 'Pulp stones / calcifications' },
+      { value: 'canal_curvature', label: 'Significant canal curvature' },
+      { value: 'open_apex', label: 'Open/immature apex' },
+      { value: 'dens_invaginatus', label: 'Dens invaginatus' },
+    ],
+  },
+  {
+    label: 'Root Structure',
+    colSpan: 2,
+    columns: 2,
+    options: [
+      { value: 'external_resorption', label: 'External resorption' },
+      { value: 'vertical_root_fracture', label: 'Possible vertical root fracture' },
+      { value: 'root_dilaceration', label: 'Root dilaceration' },
+      { value: 'root_resorption_unspecified', label: 'Root resorption – unspecified location' },
+      { value: 'fused_roots', label: 'Fused roots / taurodontism' },
+      { value: 'accessory_root', label: 'Accessory/supernumerary root' },
+    ],
+  },
+  {
+    label: 'Bone / Alveolar',
+    colSpan: 2,
+    columns: 2,
+    options: [
+      { value: 'periapical_lesion', label: 'Periapical lesion' },
+      { value: 'furcation_bone_loss', label: 'Furcation bone loss' },
+      { value: 'alveolar_bone_loss', label: 'Generalized alveolar bone loss' },
+      { value: 'sinus_proximity', label: 'Proximity to maxillary sinus' },
+      { value: 'through_and_through', label: 'Through-and-through lesion' },
+    ],
+  },
+  {
+    label: 'Prior Treatment',
+    colSpan: 4,
+    columns: 3,
+    options: [
+      { value: 'previous_rct', label: 'Previous RCT present' },
+      { value: 'short_fill', label: 'Short fill (previous RCT)' },
+      { value: 'overfill', label: 'Overfill/overextension (previous RCT)' },
+      { value: 'missed_canal', label: 'Possible missed canal' },
+      { value: 'separated_instrument', label: 'Separated instrument' },
+      { value: 'perforation', label: 'Perforation' },
+      { value: 'post_present', label: 'Post / post-and-core present' },
+      { value: 'ledge_transport', label: 'Ledge / canal transportation' },
+      { value: 'bioceramic_mta_present', label: 'Bioceramic/MTA repair material present' },
+    ],
+  },
 ];
 
 // Prognosis Options

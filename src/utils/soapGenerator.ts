@@ -12,6 +12,7 @@ import {
   mobilityGrades,
   swellingOptions,
   radiographicFindings,
+  radiographicFindingsGroups,
   treatmentTypes,
   prognosisOptions,
   treatmentOptionsOffered,
@@ -321,10 +322,26 @@ export function generateSOAPNote(data: NoteData): string {
       lines.push('Sinus tract: Present');
     }
 
-    // Radiographic findings
+    // Radiographic findings — grouped by category
     if (data.radiographicFindings.length > 0) {
-      const findings = getLabels(radiographicFindings, data.radiographicFindings);
-      lines.push(`Radiographic: ${joinList(findings)}`);
+      const categoryParts: string[] = [];
+      for (const group of radiographicFindingsGroups) {
+        const groupValues = group.options
+          .map((o) => o.value)
+          .filter((v) => data.radiographicFindings.includes(v));
+        if (groupValues.length > 0) {
+          const labels = getLabels(radiographicFindings, groupValues);
+          categoryParts.push(`${group.label}: ${joinList(labels)}`);
+        }
+      }
+      // Fall back to flat list for any values not found in groups (legacy values)
+      const knownValues = radiographicFindingsGroups.flatMap((g) => g.options.map((o) => o.value));
+      const unknownValues = data.radiographicFindings.filter((v) => !knownValues.includes(v));
+      if (unknownValues.length > 0) {
+        const labels = getLabels(radiographicFindings, unknownValues);
+        categoryParts.push(joinList(labels));
+      }
+      lines.push(`Radiographic findings:\n  ${categoryParts.join('\n  ')}`);
     }
 
     // Clinical findings comments

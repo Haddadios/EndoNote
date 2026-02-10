@@ -7,7 +7,7 @@ import {
   mobilityGrades,
   swellingOptions,
   swellingGroups,
-  radiographicFindings,
+  radiographicFindingsGroups,
   toothTypeLabels,
 } from '../../data';
 
@@ -210,118 +210,140 @@ export function ObjectiveSection() {
       </div>
 
       <>
-          <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-4 mb-2">Vitality Tests</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <CheckboxGroup
-              label="Cold Test"
-              options={vitalityResults}
-              selectedValues={noteData.coldTest}
-              onChange={(values) => updateField('coldTest', values)}
-              columns={1}
-            />
+          <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden mt-4 mb-4">
+            <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+              <span className="text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-200 uppercase">Vitality Tests</span>
+            </div>
+            <div className="p-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <CheckboxGroup
+                  label="Cold Test"
+                  sectionLabel
+                  options={vitalityResults}
+                  selectedValues={noteData.coldTest}
+                  onChange={(values) => updateField('coldTest', values)}
+                  columns={1}
+                />
 
-            <CheckboxGroup
-              label="EPT"
-              options={vitalityResults}
-              selectedValues={noteData.eptTest}
-              onChange={(values) => updateField('eptTest', values)}
-              columns={1}
-            />
+                <CheckboxGroup
+                  label="EPT"
+                  sectionLabel
+                  options={vitalityResults}
+                  selectedValues={noteData.eptTest}
+                  onChange={(values) => updateField('eptTest', values)}
+                  columns={1}
+                />
 
-            <CheckboxGroup
-              label="Heat Test"
-              options={vitalityResults}
-              selectedValues={noteData.heatTest}
-              onChange={(values) => updateField('heatTest', values)}
-              columns={1}
-            />
+                <CheckboxGroup
+                  label="Heat Test"
+                  sectionLabel
+                  options={vitalityResults}
+                  selectedValues={noteData.heatTest}
+                  onChange={(values) => updateField('heatTest', values)}
+                  columns={1}
+                />
+              </div>
+
+              <TextInput
+                label="Vitality Test Comments"
+                value={noteData.vitalityTestComments}
+                onChange={(value) => updateField('vitalityTestComments', value)}
+                placeholder="Additional vitality test notes..."
+                multiline
+                rows={2}
+              />
+            </div>
           </div>
 
-          <TextInput
-            label="Vitality Test Comments"
-            value={noteData.vitalityTestComments}
-            onChange={(value) => updateField('vitalityTestComments', value)}
-            placeholder="Additional vitality test notes..."
-            multiline
-            rows={2}
-          />
-
-          <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mt-4 mb-2">Clinical Findings</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <CheckboxGroup
-              label="Percussion"
-              options={percussionPalpationResults}
-              selectedValues={noteData.percussion}
-              onChange={(values) => updateField('percussion', values)}
-              columns={1}
-            />
-
-            <CheckboxGroup
-              label="Palpation"
-              options={percussionPalpationResults}
-              selectedValues={noteData.palpation}
-              onChange={(values) => updateField('palpation', values)}
-              columns={1}
-            />
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Probing Depths (mm)
-              </label>
-              <div className="grid grid-cols-6 gap-2">
-                {(['MB', 'B', 'DB', 'DL', 'L', 'ML'] as const).map((surface) => (
-                  <div key={surface} className="flex flex-col items-center">
-                    <label className="text-xs text-gray-500 dark:text-gray-400 mb-1">{surface}</label>
-                    <input
-                      type="text"
-                      value={noteData.probingDepths[surface]}
-                      onChange={(e) => updateField('probingDepths', {
-                        ...noteData.probingDepths,
-                        [surface]: e.target.value
-                      })}
-                      className="w-full px-2 py-1.5 text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      placeholder="-"
-                    />
-                  </div>
-                ))}
-              </div>
+          <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden mt-4 mb-4">
+            <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+              <span className="text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-200 uppercase">Clinical Findings</span>
             </div>
+            <div className="p-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CheckboxGroup
+                  label="Percussion"
+                  sectionLabel
+                  options={percussionPalpationResults}
+                  selectedValues={noteData.percussion}
+                  onChange={(values) => updateField('percussion', values)}
+                  columns={1}
+                />
 
-            <div className="md:col-span-2">
+                <CheckboxGroup
+                  label="Palpation"
+                  sectionLabel
+                  options={percussionPalpationResults}
+                  selectedValues={noteData.palpation}
+                  onChange={(values) => updateField('palpation', values)}
+                  columns={1}
+                />
+
+                <div className="md:col-span-2">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
+                    <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                      <span className="text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-200 uppercase">Probing Depths (mm)</span>
+                    </div>
+                    <div className="p-3">
+                      <div className="grid grid-cols-6 gap-2">
+                        {(['MB', 'B', 'DB', 'DL', 'L', 'ML'] as const).map((surface) => (
+                          <div key={surface} className="flex flex-col items-center">
+                            <label className="text-xs text-gray-500 dark:text-gray-400 mb-1">{surface}</label>
+                            <input
+                              type="text"
+                              value={noteData.probingDepths[surface]}
+                              onChange={(e) => updateField('probingDepths', {
+                                ...noteData.probingDepths,
+                                [surface]: e.target.value
+                              })}
+                              className="w-full px-2 py-1.5 text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              placeholder="-"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <CheckboxGroup
+                    label="Mobility"
+                    sectionLabel
+                    options={mobilityGrades}
+                    selectedValues={noteData.mobility}
+                    onChange={(values) => updateField('mobility', values)}
+                    columns={4}
+                  />
+                </div>
+              </div>
+
               <CheckboxGroup
-                label="Mobility"
-                options={mobilityGrades}
-                selectedValues={noteData.mobility}
-                onChange={(values) => updateField('mobility', values)}
+                label="Swelling"
+                options={swellingOptions}
+                groups={swellingGroups}
+                selectedValues={noteData.swelling}
+                onChange={(values) => updateField('swelling', values)}
                 columns={4}
+              />
+
+              <TextInput
+                label="Clinical Findings Comments"
+                value={noteData.clinicalFindingsComments}
+                onChange={(value) => updateField('clinicalFindingsComments', value)}
+                placeholder="Additional clinical findings notes..."
+                multiline
+                rows={2}
               />
             </div>
           </div>
 
           <CheckboxGroup
-            label="Swelling"
-            options={swellingOptions}
-            groups={swellingGroups}
-            selectedValues={noteData.swelling}
-            onChange={(values) => updateField('swelling', values)}
-            columns={4}
-          />
-
-          <TextInput
-            label="Clinical Findings Comments"
-            value={noteData.clinicalFindingsComments}
-            onChange={(value) => updateField('clinicalFindingsComments', value)}
-            placeholder="Additional clinical findings notes..."
-            multiline
-            rows={2}
-          />
-
-          <CheckboxGroup
             label="Radiographic Findings"
-            options={radiographicFindings}
+            groups={radiographicFindingsGroups}
             selectedValues={noteData.radiographicFindings}
             onChange={(values) => updateField('radiographicFindings', values)}
-            columns={2}
+            columns={4}
           />
 
           {/* Additional Comments */}
