@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNote } from '../../context/NoteContext';
-import { CheckboxGroup, Checkbox, TextInput, Odontogram } from '../common';
+import { CheckboxGroup, TextInput, Odontogram } from '../common';
 import {
   vitalityResults,
   percussionPalpationResults,
   mobilityGrades,
   swellingOptions,
+  swellingGroups,
   radiographicFindings,
   toothTypeLabels,
 } from '../../data';
@@ -300,18 +301,11 @@ export function ObjectiveSection() {
           <CheckboxGroup
             label="Swelling"
             options={swellingOptions}
+            groups={swellingGroups}
             selectedValues={noteData.swelling}
             onChange={(values) => updateField('swelling', values)}
-            columns={2}
+            columns={4}
           />
-
-          <div className="mb-4 pl-2">
-            <Checkbox
-              label="Sinus tract present"
-              checked={noteData.sinusTract}
-              onChange={(checked) => updateField('sinusTract', checked)}
-            />
-          </div>
 
           <TextInput
             label="Clinical Findings Comments"

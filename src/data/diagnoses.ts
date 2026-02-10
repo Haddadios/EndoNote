@@ -1,4 +1,4 @@
-import type { SelectOption } from '../types';
+import type { SelectOption, SelectOptionGroup } from '../types';
 
 // Updated Pulpal Diagnoses
 export const pulpalDiagnoses: SelectOption[] = [
@@ -27,7 +27,7 @@ export const periapicalDiagnoses: SelectOption[] = [
 
 // Vitality Test Results
 export const vitalityResults: SelectOption[] = [
-  { value: 'positive', label: 'Positive (normal)' },
+  { value: 'positive', label: 'Positive' },
   { value: 'negative', label: 'Negative (no response)' },
   { value: 'exaggerated', label: 'Exaggerated/lingering' },
   { value: 'diminished', label: 'Diminished' },
@@ -54,11 +54,48 @@ export const mobilityGrades: SelectOption[] = [
 // Swelling Options
 export const swellingOptions: SelectOption[] = [
   { value: 'none', label: 'None' },
-  { value: 'localized_fluctuant', label: 'Localized fluctuant' },
-  { value: 'localized_diffuse', label: 'Localized diffuse' },
-  { value: 'extraoral', label: 'Extraoral' },
-  { value: 'intraoral_buccal', label: 'Intraoral - buccal' },
-  { value: 'intraoral_palatal', label: 'Intraoral - palatal/lingual' },
+  { value: 'localized', label: 'Localized' },
+  { value: 'diffuse', label: 'Diffuse' },
+  { value: 'fluctuant', label: 'Fluctuant' },
+  { value: 'firm', label: 'Firm' },
+  { value: 'buccal', label: 'Buccal' },
+  { value: 'lingual', label: 'Lingual' },
+  { value: 'palatal', label: 'Palatal' },
+  { value: 'sinus_tract', label: 'Sinus tract present' },
+  { value: 'drainage_sulcus', label: 'Drainage through gingival sulcus' },
+];
+
+export const swellingGroups: SelectOptionGroup[] = [
+  {
+    label: 'Extent',
+    options: [
+      { value: 'none', label: 'None' },
+      { value: 'localized', label: 'Localized' },
+      { value: 'diffuse', label: 'Diffuse' },
+    ],
+  },
+  {
+    label: 'Consistency',
+    options: [
+      { value: 'fluctuant', label: 'Fluctuant' },
+      { value: 'firm', label: 'Firm' },
+    ],
+  },
+  {
+    label: 'Location',
+    options: [
+      { value: 'buccal', label: 'Buccal' },
+      { value: 'lingual', label: 'Lingual' },
+      { value: 'palatal', label: 'Palatal' },
+    ],
+  },
+  {
+    label: 'Additional',
+    options: [
+      { value: 'sinus_tract', label: 'Sinus tract present' },
+      { value: 'drainage_sulcus', label: 'Drainage through gingival sulcus' },
+    ],
+  },
 ];
 
 // Radiographic Findings

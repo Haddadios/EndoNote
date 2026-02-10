@@ -10,6 +10,13 @@ interface CheckboxGroupProps {
   selectedValues: string[];
   onChange: (values: string[]) => void;
   columns?: 1 | 2 | 3 | 4;
+  inlineTextInputs?: {
+    [optionValue: string]: {
+      value: string;
+      onChange: (value: string) => void;
+      placeholder?: string;
+    };
+  };
 }
 
 export function CheckboxGroup({
@@ -21,6 +28,7 @@ export function CheckboxGroup({
   selectedValues,
   onChange,
   columns = 2,
+  inlineTextInputs,
 }: CheckboxGroupProps) {
   const [showMore, setShowMore] = useState(false);
 
@@ -61,20 +69,34 @@ export function CheckboxGroup({
     ? [...mainOptions, ...(showMore ? moreOptions : [])]
     : options || [];
 
-  const renderCheckbox = (option: SelectOption) => (
-    <label
-      key={option.value}
-      className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
-    >
-      <input
-        type="checkbox"
-        checked={selectedValues.includes(option.value)}
-        onChange={() => handleToggle(option.value)}
-        className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
-      />
-      <span className="text-sm text-gray-700 dark:text-gray-300">{option.label}</span>
-    </label>
-  );
+  const renderCheckbox = (option: SelectOption) => {
+    const hasInlineInput = inlineTextInputs && inlineTextInputs[option.value];
+    const isChecked = selectedValues.includes(option.value);
+
+    return (
+      <div key={option.value} className="flex items-center gap-2">
+        <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={() => handleToggle(option.value)}
+            className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
+          />
+          <span className="text-sm text-gray-700 dark:text-gray-300">{option.label}</span>
+        </label>
+        {hasInlineInput && isChecked && (
+          <input
+            type="text"
+            value={hasInlineInput.value}
+            onChange={(e) => hasInlineInput.onChange(e.target.value)}
+            placeholder={hasInlineInput.placeholder || ''}
+            className="ml-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            style={{ width: '250px' }}
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="mb-4">

@@ -114,7 +114,7 @@ const hasDraftContent = (data: NoteData): boolean => {
     hasNonEmptyString(data.temporizedWith) ||
     hasNonEmptyString(data.referralComments) ||
     hasNonEmptyString(data.treatmentComments) ||
-    hasNonEmptyString(data.isolation) ||
+    data.isolation.length > 0 ||
     hasNonEmptyString(data.medicament) ||
     hasNonEmptyString(data.restoration) ||
     hasNonEmptyString(data.complicationsComments) ||
@@ -291,7 +291,7 @@ const initialNoteData: NoteData = {
   anesthesiaLocations: [],
   anesthesiaLocationMapping: {},
   anesthesiaLocationSides: {},
-  isolation: '',
+  isolation: [],
 
   // Multi-tooth treatment plans
   toothTreatmentPlans: [],

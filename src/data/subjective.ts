@@ -39,8 +39,11 @@ export const painCharacteristics: SelectOption[] = [
   { value: 'worse_lying_down', label: 'Worse when lying down' },
   { value: 'relieved_cold', label: 'Relieved by cold' },
   { value: 'relieved_heat', label: 'Relieved by heat' },
+  { value: 'not_relieved_anything', label: 'Not relieved by anything' },
   { value: 'relieved_analgesics', label: 'Relieved by analgesics' },
   { value: 'not_relieved_analgesics', label: 'Not relieved by analgesics' },
+  { value: 'sinus_issues', label: 'Sinus issues on affected side' },
+  { value: 'headache_affected_side', label: 'Headache on the affected side' },
   { value: 'few_days', label: 'Few days' },
   { value: '1_week', label: '1 week' },
   { value: 'several_weeks', label: 'Several weeks' },
@@ -98,6 +101,7 @@ export const painCharacteristicGroups: SelectOptionGroup[] = [
       { value: 'worse_lying_down', label: 'Worse when lying down' },
       { value: 'relieved_cold', label: 'Relieved by cold' },
       { value: 'relieved_heat', label: 'Relieved by heat' },
+      { value: 'not_relieved_anything', label: 'Not relieved by anything' },
     ],
   },
   {
@@ -105,6 +109,8 @@ export const painCharacteristicGroups: SelectOptionGroup[] = [
     options: [
       { value: 'relieved_analgesics', label: 'Relieved by analgesics' },
       { value: 'not_relieved_analgesics', label: 'Not relieved by analgesics' },
+      { value: 'sinus_issues', label: 'Sinus issues on affected side' },
+      { value: 'headache_affected_side', label: 'Headache on the affected side' },
     ],
   },
   {

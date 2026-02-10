@@ -52,10 +52,16 @@ export function generateReferralLetter(noteData: NoteData) {
     primaryDiagnosis?.recommendedTreatment ||
     '';
 
-  const noTreatmentValues = new Set(['no_treatment_monitoring']);
+  const noTreatmentValues = new Set(['no_treatment', 'no_treatment_monitoring', 'extraction', 'other']);
   const hasTreatmentSelected = Boolean(selectedTreatmentValue) && !noTreatmentValues.has(selectedTreatmentValue);
 
-  const letterDate = noteData.referralLetterDate || placeholderDate;
+  // Default to current date in format: "MM/DD/YYYY"
+  const getCurrentDate = () => {
+    const today = new Date();
+    return today.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
+  const letterDate = noteData.referralLetterDate || getCurrentDate();
   const consultationDate = noteData.consultationDate || placeholderDate;
   const completionDate = noteData.treatmentCompletionDate || placeholderDate;
   const patientNameForBody = noteData.patientName || 'the patient';

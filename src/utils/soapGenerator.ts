@@ -54,6 +54,15 @@ function getLabels(options: { value: string; label: string }[], values: string[]
     .filter(Boolean) as string[];
 }
 
+// Helper to check if all items share the same non-empty value; returns it or undefined
+function allSameValue<T>(items: T[], getValue: (item: T) => string | undefined): string | undefined {
+  if (items.length <= 1) return undefined;
+  const values = items.map(getValue).filter(Boolean) as string[];
+  if (values.length !== items.length) return undefined;
+  const first = values[0];
+  return values.every((v) => v === first) ? first : undefined;
+}
+
 // Helper to join array with proper grammar
 function joinList(items: string[]): string {
   if (items.length === 0) return '';
@@ -157,19 +166,19 @@ export function generateSOAPNote(data: NoteData): string {
     // Pain characteristics - structured sentence
     if (data.painCharacteristics.length > 0) {
       const selectedValues = data.painCharacteristics;
-      const findFirstValue = (candidates: string[]) => selectedValues.find((v) => candidates.includes(v));
-      const valueToLabel = (value?: string) =>
-        value ? getLabel(painCharacteristics, value).toLowerCase() : undefined;
+      const findAllValues = (candidates: string[]) => selectedValues.filter((v) => candidates.includes(v));
+      const valuesToLabels = (values: string[]) =>
+        values.map(v => getLabel(painCharacteristics, v).toLowerCase());
 
-      const char = valueToLabel(findFirstValue(['sharp', 'dull', 'throbbing']));
-      const onset = valueToLabel(findFirstValue(['spontaneous', 'provoked', 'wakes_from_sleep']));
-      const loc = valueToLabel(findFirstValue(['localized', 'radiating', 'diffuse']));
-      const dur = valueToLabel(findFirstValue(['constant', 'intermittent', 'lingering']));
-      const severity = valueToLabel(findFirstValue(['mild', 'moderate', 'severe']));
-      const pattern = valueToLabel(findFirstValue(['worse_lying_down', 'relieved_cold', 'relieved_heat']));
-      const assoc = valueToLabel(findFirstValue(['relieved_analgesics', 'not_relieved_analgesics']));
+      const charLabels = valuesToLabels(findAllValues(['sharp', 'dull', 'throbbing']));
+      const onsetLabels = valuesToLabels(findAllValues(['spontaneous', 'provoked', 'wakes_from_sleep']));
+      const locLabels = valuesToLabels(findAllValues(['localized', 'radiating', 'diffuse']));
+      const durLabels = valuesToLabels(findAllValues(['constant', 'intermittent', 'lingering']));
+      const severityLabels = valuesToLabels(findAllValues(['mild', 'moderate', 'severe']));
+      const patternLabels = valuesToLabels(findAllValues(['worse_lying_down', 'relieved_cold', 'relieved_heat']));
+      const assocLabels = valuesToLabels(findAllValues(['relieved_analgesics', 'not_relieved_analgesics']));
 
-      const historyValue = findFirstValue([
+      const historyValues = findAllValues([
         'few_days',
         '1_week',
         'several_weeks',
@@ -180,22 +189,26 @@ export function generateSOAPNote(data: NoteData): string {
         'history_other',
       ]);
 
-      let historyLabel = valueToLabel(historyValue);
-      if (historyValue === 'history_other' && data.painHistoryOther?.trim()) {
-        historyLabel = data.painHistoryOther.trim().toLowerCase();
-      }
+      let historyLabels: string[] = [];
+      historyValues.forEach(value => {
+        if (value === 'history_other' && data.painHistoryOther?.trim()) {
+          historyLabels.push(data.painHistoryOther.trim().toLowerCase());
+        } else {
+          historyLabels.push(getLabel(painCharacteristics, value).toLowerCase());
+        }
+      });
 
       // Build sentence: "Patient reports <char>, <onset>, <loc>, <dur>, <severity> pain, that is <pattern>, <assoc>, and has been around for <history>"
       const beforePain: string[] = [];
-      if (char) beforePain.push(char);
-      if (onset) beforePain.push(onset);
-      if (loc) beforePain.push(loc);
-      if (dur) beforePain.push(dur);
-      if (severity) beforePain.push(severity);
+      if (charLabels.length > 0) beforePain.push(joinList(charLabels));
+      if (onsetLabels.length > 0) beforePain.push(joinList(onsetLabels));
+      if (locLabels.length > 0) beforePain.push(joinList(locLabels));
+      if (durLabels.length > 0) beforePain.push(joinList(durLabels));
+      if (severityLabels.length > 0) beforePain.push(joinList(severityLabels));
 
       const afterPain: string[] = [];
-      if (pattern) afterPain.push(pattern);
-      if (assoc) afterPain.push(assoc);
+      if (patternLabels.length > 0) afterPain.push(joinList(patternLabels));
+      if (assocLabels.length > 0) afterPain.push(joinList(assocLabels));
 
       let painSentence = 'Patient reports ';
       if (beforePain.length > 0) {
@@ -208,8 +221,8 @@ export function generateSOAPNote(data: NoteData): string {
         painSentence += ', that is ' + afterPain.join(', ');
       }
 
-      if (historyLabel) {
-        painSentence += ', and has been around for ' + historyLabel;
+      if (historyLabels.length > 0) {
+        painSentence += ', and has been around for ' + joinList(historyLabels);
       }
 
       chiefComplaint += ` ${painSentence}.`;
@@ -303,8 +316,8 @@ export function generateSOAPNote(data: NoteData): string {
       lines.push(`Swelling: ${joinList(swellingLabels)}`);
     }
 
-    // Sinus tract
-    if (data.sinusTract) {
+    // Sinus tract (legacy support - if stored as separate field)
+    if (data.sinusTract && !data.swelling.includes('sinus_tract')) {
       lines.push('Sinus tract: Present');
     }
 
@@ -463,8 +476,8 @@ export function generateSOAPNote(data: NoteData): string {
   }
 
   // Isolation
-  if (data.isolation) {
-    lines.push(`Isolation: ${getLabel(isolationMethods, data.isolation)}`);
+  if (data.isolation.length > 0) {
+    lines.push(`Isolation: ${joinList(getLabels(isolationMethods, data.isolation))}`);
   }
 
   // === PER-TOOTH TREATMENT ===
@@ -517,54 +530,62 @@ export function generateSOAPNote(data: NoteData): string {
             }
           });
 
-          const canalDetails = plan.canalMAFs
-            .filter((m) => (m.workingLength || m.referencePoint || m.fileSystem || m.size || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal))
-            .map((m) => {
+          const relevantCanalMAFs = plan.canalMAFs.filter(
+            (m) => (m.workingLength || m.referencePoint || m.fileSystem || m.size || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal)
+          );
+
+          if (relevantCanalMAFs.length > 0) {
+            // Detect shared properties across all canals (size/taper always shown per-canal)
+            const sharedFileSystem = allSameValue(relevantCanalMAFs, (m) => m.fileSystem);
+            const sharedObtTechnique = allSameValue(relevantCanalMAFs, (m) => m.obturationTechnique);
+            const sharedObtMaterial = allSameValue(relevantCanalMAFs, (m) => m.obturationMaterial);
+            const sharedObtSealer = allSameValue(relevantCanalMAFs, (m) => m.obturationSealer);
+
+            lines.push('  Per-canal details:');
+
+            // Show shared summary line if any properties are common across all canals
+            const sharedInstrParts: string[] = [];
+            if (sharedFileSystem) sharedInstrParts.push(getLabel(instrumentationSystems, sharedFileSystem));
+            const sharedObtParts: string[] = [];
+            if (sharedObtTechnique) sharedObtParts.push(getLabel(obturationTechniques, sharedObtTechnique));
+            if (sharedObtMaterial) sharedObtParts.push(getLabel(obturationMaterials, sharedObtMaterial));
+            if (sharedObtSealer) sharedObtParts.push(`Sealer: ${getLabel(obturationSealers, sharedObtSealer)}`);
+            if (sharedInstrParts.length > 0 || sharedObtParts.length > 0) {
+              const sharedLineParts: string[] = [];
+              if (sharedInstrParts.length > 0) sharedLineParts.push(`Prep: ${sharedInstrParts.join(' ')}`);
+              if (sharedObtParts.length > 0) sharedLineParts.push(`Obt: ${sharedObtParts.join(' with ')}`);
+              lines.push(`  All canals: ${sharedLineParts.join(' | ')}`);
+            }
+
+            relevantCanalMAFs.forEach((m) => {
               const parts: string[] = [];
 
-              // Patent status
               const patentStatus = m.patent ? 'Patent' : 'Not Patent';
               parts.push(patentStatus);
 
-              // Working length and reference point
               if (m.workingLength) {
                 let wlText = `WL: ${m.workingLength}mm`;
-                if (m.referencePoint) {
-                  wlText += ` from ${m.referencePoint}`;
-                }
+                if (m.referencePoint) wlText += ` from ${m.referencePoint}`;
                 parts.push(wlText);
               }
 
-              // Instrumentation details
+              // Show per-canal instrumentation: skip fileSystem if shared, always show size/taper
               const instrParts: string[] = [];
-              if (m.fileSystem) instrParts.push(getLabel(instrumentationSystems, m.fileSystem));
+              if (m.fileSystem && m.fileSystem !== sharedFileSystem) instrParts.push(getLabel(instrumentationSystems, m.fileSystem));
               if (m.size) instrParts.push(getLabel(mafSizes, m.size));
               if (m.taper) instrParts.push(getLabel(mafTapers, m.taper));
-              if (instrParts.length > 0) {
-                parts.push(`Prep: ${instrParts.join(' ')}`);
-              }
+              if (instrParts.length > 0) parts.push(`Prep: ${instrParts.join(' ')}`);
 
-              // Obturation details
+              // Only show obturation properties that differ from shared
               const obtParts: string[] = [];
-              if (m.obturationTechnique) obtParts.push(getLabel(obturationTechniques, m.obturationTechnique));
-              if (m.obturationMaterial) obtParts.push(getLabel(obturationMaterials, m.obturationMaterial));
-              if (m.obturationSealer) obtParts.push(`Sealer: ${getLabel(obturationSealers, m.obturationSealer)}`);
-              if (obtParts.length > 0) {
-                parts.push(`Obt: ${obtParts.join(' with ')}`);
-              }
+              if (m.obturationTechnique && m.obturationTechnique !== sharedObtTechnique) obtParts.push(getLabel(obturationTechniques, m.obturationTechnique));
+              if (m.obturationMaterial && m.obturationMaterial !== sharedObtMaterial) obtParts.push(getLabel(obturationMaterials, m.obturationMaterial));
+              if (m.obturationSealer && m.obturationSealer !== sharedObtSealer) obtParts.push(`Sealer: ${getLabel(obturationSealers, m.obturationSealer)}`);
+              if (obtParts.length > 0) parts.push(`Obt: ${obtParts.join(' with ')}`);
 
-              return `    ${m.canal} - ${parts.join('; ')}`;
+              lines.push(`    ${m.canal} - ${parts.join('; ')}`);
             });
-
-          if (canalDetails.length > 0) {
-            lines.push('  Per-canal details:');
-            canalDetails.forEach((detail) => lines.push(detail));
           }
-        }
-
-        // Restoration
-        if (plan.restoration) {
-          lines.push(`  Restoration: ${getLabel(restorationTypes, plan.restoration)}`);
         }
 
         lines.push('');
@@ -620,57 +641,71 @@ export function generateSOAPNote(data: NoteData): string {
       }
     });
 
-    const canalDetails = data.canalMAFs
-      .filter((m) => (m.workingLength || m.referencePoint || m.fileSystem || m.size || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal))
-      .map((m) => {
+    const relevantCanalMAFs = data.canalMAFs.filter(
+      (m) => (m.workingLength || m.referencePoint || m.fileSystem || m.size || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal)
+    );
+
+    if (relevantCanalMAFs.length > 0) {
+      // Detect shared properties across all canals (size/taper always shown per-canal)
+      const sharedFileSystem = allSameValue(relevantCanalMAFs, (m) => m.fileSystem);
+      const sharedObtTechnique = allSameValue(relevantCanalMAFs, (m) => m.obturationTechnique);
+      const sharedObtMaterial = allSameValue(relevantCanalMAFs, (m) => m.obturationMaterial);
+      const sharedObtSealer = allSameValue(relevantCanalMAFs, (m) => m.obturationSealer);
+
+      lines.push('');
+      lines.push('Per-canal details:');
+
+      // Show shared summary line if any properties are common across all canals
+      const sharedInstrParts: string[] = [];
+      if (sharedFileSystem) sharedInstrParts.push(getLabel(instrumentationSystems, sharedFileSystem));
+      const sharedObtParts: string[] = [];
+      if (sharedObtTechnique) sharedObtParts.push(getLabel(obturationTechniques, sharedObtTechnique));
+      if (sharedObtMaterial) sharedObtParts.push(getLabel(obturationMaterials, sharedObtMaterial));
+      if (sharedObtSealer) sharedObtParts.push(`Sealer: ${getLabel(obturationSealers, sharedObtSealer)}`);
+      if (sharedInstrParts.length > 0 || sharedObtParts.length > 0) {
+        const sharedLineParts: string[] = [];
+        if (sharedInstrParts.length > 0) sharedLineParts.push(`Prep: ${sharedInstrParts.join(' ')}`);
+        if (sharedObtParts.length > 0) sharedLineParts.push(`Obt: ${sharedObtParts.join(' with ')}`);
+        lines.push(`All canals: ${sharedLineParts.join(' | ')}`);
+      }
+
+      relevantCanalMAFs.forEach((m) => {
         const parts: string[] = [];
 
-        // Patent status
         const patentStatus = m.patent ? 'Patent' : 'Not Patent';
         parts.push(patentStatus);
 
-        // Working length and reference point
         if (m.workingLength) {
           let wlText = `WL: ${m.workingLength}mm`;
-          if (m.referencePoint) {
-            wlText += ` from ${m.referencePoint}`;
-          }
+          if (m.referencePoint) wlText += ` from ${m.referencePoint}`;
           parts.push(wlText);
         }
 
-        // Instrumentation details
+        // Show per-canal instrumentation: skip fileSystem if shared, always show size/taper
         const instrParts: string[] = [];
-        if (m.fileSystem) instrParts.push(getLabel(instrumentationSystems, m.fileSystem));
+        if (m.fileSystem && m.fileSystem !== sharedFileSystem) instrParts.push(getLabel(instrumentationSystems, m.fileSystem));
         if (m.size) instrParts.push(getLabel(mafSizes, m.size));
         if (m.taper) instrParts.push(getLabel(mafTapers, m.taper));
-        if (instrParts.length > 0) {
-          parts.push(`Prep: ${instrParts.join(' ')}`);
-        }
+        if (instrParts.length > 0) parts.push(`Prep: ${instrParts.join(' ')}`);
 
-        // Obturation details
+        // Only show obturation properties that differ from shared
         const obtParts: string[] = [];
-        if (m.obturationTechnique) obtParts.push(getLabel(obturationTechniques, m.obturationTechnique));
-        if (m.obturationMaterial) obtParts.push(getLabel(obturationMaterials, m.obturationMaterial));
-        if (m.obturationSealer) obtParts.push(`Sealer: ${getLabel(obturationSealers, m.obturationSealer)}`);
-        if (obtParts.length > 0) {
-          parts.push(`Obt: ${obtParts.join(' with ')}`);
-        }
+        if (m.obturationTechnique && m.obturationTechnique !== sharedObtTechnique) obtParts.push(getLabel(obturationTechniques, m.obturationTechnique));
+        if (m.obturationMaterial && m.obturationMaterial !== sharedObtMaterial) obtParts.push(getLabel(obturationMaterials, m.obturationMaterial));
+        if (m.obturationSealer && m.obturationSealer !== sharedObtSealer) obtParts.push(`Sealer: ${getLabel(obturationSealers, m.obturationSealer)}`);
+        if (obtParts.length > 0) parts.push(`Obt: ${obtParts.join(' with ')}`);
 
-        return `${m.canal} - ${parts.join('; ')}`;
+        lines.push(`  ${m.canal} - ${parts.join('; ')}`);
       });
-
-    if (canalDetails.length > 0) {
-      lines.push('');
-      lines.push('Per-canal details:');
-      canalDetails.forEach((detail) => lines.push(`  ${detail}`));
     }
   }
 
-  // Restoration (legacy single-tooth)
-  if (data.restoration) {
-    lines.push(`Restoration: ${getLabel(restorationTypes, data.restoration)}`);
-  }
   } // End of legacy format else block
+
+  // Medicament (placed immediately after prep/canal details)
+  if (data.medicament && data.medicament !== 'none') {
+    lines.push(`Medicament: ${getLabel(medicaments, data.medicament)}`);
+  }
 
   // Irrigation
   if (data.irrigationProtocol.length > 0) {
@@ -682,9 +717,17 @@ export function generateSOAPNote(data: NoteData): string {
     lines.push(`Irrigation: ${joinList(irrigation)}`);
   }
 
-  // Medicament
-  if (data.medicament && data.medicament !== 'none') {
-    lines.push(`Medicament: ${getLabel(medicaments, data.medicament)}`);
+  // Restoration (after irrigation, before complications)
+  if (data.toothTreatmentPlans && data.toothTreatmentPlans.length > 0) {
+    const restorationLines = data.toothTreatmentPlans
+      .filter((plan) => plan.toothNumber && plan.restoration)
+      .map((plan) => `  Tooth #${plan.toothNumber}: ${getLabel(restorationTypes, plan.restoration!)}`);
+    if (restorationLines.length > 0) {
+      lines.push(`Restoration:`);
+      restorationLines.forEach((r) => lines.push(r));
+    }
+  } else if (data.restoration) {
+    lines.push(`Restoration: ${getLabel(restorationTypes, data.restoration)}`);
   }
 
   // Complications

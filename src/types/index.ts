@@ -138,7 +138,7 @@ export interface NoteData {
   anesthesiaLocations: string[];
   anesthesiaLocationMapping: Record<string, string[]>; // maps location to array of anesthetic types
   anesthesiaLocationSides: Record<string, string>; // maps location to 'rhs' | 'lhs' | 'bilateral'
-  isolation: string;
+  isolation: string[];
 
   // Multi-tooth treatment plans
   toothTreatmentPlans: ToothTreatmentPlan[];

@@ -2,9 +2,9 @@ import type { SelectOption, TreatmentType } from '../types';
 
 // Updated Treatment Options
 export const treatmentTypes: SelectOption[] = [
-  { value: 'initial_rct', label: 'Initial RCT' },
+  { value: 'initial_rct', label: 'Non-Surgical Root Canal Therapy' },
   { value: 'continuing_rct', label: 'Continuing Prev. Initiated RCT' },
-  { value: 'ns_rerct', label: 'NSReRCT' },
+  { value: 'ns_rerct', label: 'Non-Surgical Root Canal Retreatment' },
   { value: 'apical_microsurgery', label: 'Apical Microsurgery' },
   { value: 'hemisection', label: 'Hemisection' },
   { value: 'root_resection', label: 'Root Resection' },
@@ -14,15 +14,17 @@ export const treatmentTypes: SelectOption[] = [
   { value: 'intentional_replantation', label: 'Intentional Replantation' },
   { value: 'autotransplantation', label: 'Autotransplantation' },
   { value: 'direct_restoration', label: 'Direct Restoration' },
+  { value: 'extraction', label: 'Extraction' },
   { value: 'no_treatment_monitoring', label: 'No treatment & Monitoring' },
+  { value: 'no_treatment', label: 'No Treatment' },
   { value: 'trauma', label: 'Trauma Management' },
   { value: 'other', label: 'Other' },
 ];
 
 export const treatmentLabels: Record<TreatmentType, string> = {
-  initial_rct: 'Initial RCT',
+  initial_rct: 'Non-Surgical Root Canal Therapy',
   continuing_rct: 'Continuing Prev. Initiated RCT',
-  ns_rerct: 'NSReRCT',
+  ns_rerct: 'Non-Surgical Root Canal Retreatment',
   apical_microsurgery: 'Apical Microsurgery',
   hemisection: 'Hemisection',
   root_resection: 'Root Resection',
@@ -107,9 +109,9 @@ export const referralOptions: SelectOption[] = [
 
 // Treatment Options Offered
 export const treatmentOptionsOffered: SelectOption[] = [
-  { value: 'initial_rct', label: 'Initial RCT' },
+  { value: 'initial_rct', label: 'Non-Surgical Root Canal Therapy' },
   { value: 'continuing_rct', label: 'Continuing Prev. Initiated RCT' },
-  { value: 'ns_rerct', label: 'NSReRCT' },
+  { value: 'ns_rerct', label: 'Non-Surgical Root Canal Retreatment' },
   { value: 'apical_microsurgery', label: 'Apical Microsurgery' },
   { value: 'hemisection', label: 'Hemisection' },
   { value: 'root_resection', label: 'Root Resection' },

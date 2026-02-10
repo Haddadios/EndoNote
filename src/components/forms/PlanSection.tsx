@@ -52,7 +52,7 @@ export function PlanSection() {
     anesthesiaLocations: string[];
     anesthesiaLocationMapping: Record<string, string[]>;
     anesthesiaLocationSides: Record<string, string>;
-    isolation: string;
+    isolation: string[];
     toothTreatmentPlans: ToothTreatmentPlan[];
     canalConfiguration: string[];
     customCanalNames: string[];
@@ -95,6 +95,22 @@ export function PlanSection() {
       setActiveTabId(noteData.toothTreatmentPlans[0].id);
     }
   }, [noteData.toothDiagnoses, noteData.toothTreatmentPlans, activeTabId, addToothTreatmentPlan]);
+
+  // Auto-default rubber dam isolation for specific endodontic treatments
+  const rubberDamTreatments = new Set([
+    'initial_rct',
+    'continuing_rct',
+    'ns_rerct',
+    'apexification',
+    'apexogenesis',
+    'regenerative_endo',
+  ]);
+  useEffect(() => {
+    const requiresRubberDam = noteData.treatmentOptionsOffered.some((t) => rubberDamTreatments.has(t));
+    if (requiresRubberDam && !noteData.isolation.includes('rubber_dam')) {
+      updateField('isolation', [...noteData.isolation, 'rubber_dam']);
+    }
+  }, [noteData.treatmentOptionsOffered]);
 
   // Sync teeth from Assessment section (manual trigger)
   const handleSyncFromAssessment = () => {
@@ -378,7 +394,7 @@ export function PlanSection() {
     updateField('anesthesiaLocations', []);
     updateField('anesthesiaLocationMapping', {});
     updateField('anesthesiaLocationSides', {});
-    updateField('isolation', '');
+    updateField('isolation', []);
     updateField('toothTreatmentPlans', []);
     updateField('canalConfiguration', []);
     updateField('customCanalNames', []);
@@ -628,12 +644,12 @@ export function PlanSection() {
       </div>
 
       {/* Isolation */}
-      <Dropdown
+      <CheckboxGroup
         label="Isolation"
-        value={noteData.isolation}
         options={isolationMethods}
-        onChange={(value) => updateField('isolation', value)}
-        placeholder="Select isolation method..."
+        selectedValues={noteData.isolation}
+        onChange={(values) => updateField('isolation', values)}
+        columns={4}
       />
 
       {/* === PER-TOOTH TREATMENT - TABS === */}
@@ -1025,16 +1041,6 @@ export function PlanSection() {
               </div>
             )}
 
-            {/* Restoration */}
-            <div className="mt-4">
-              <Dropdown
-                label="Restoration"
-                value={activePlan.restoration}
-                options={restorationTypes}
-                onChange={(value) => updateToothTreatmentPlan(activePlan.id, 'restoration', value)}
-                placeholder="Select restoration..."
-              />
-            </div>
           </div>
         )}
 
@@ -1050,6 +1056,15 @@ export function PlanSection() {
 
       {/* === GLOBAL SETTINGS - BOTTOM === */}
 
+      {/* Medicament */}
+      <Dropdown
+        label="Intracanal Medicament"
+        value={noteData.medicament}
+        options={medicaments}
+        onChange={(value) => updateField('medicament', value)}
+        placeholder="Select medicament..."
+      />
+
       {/* Irrigation */}
       <CheckboxGroup
         label="Irrigation Protocol"
@@ -1060,14 +1075,33 @@ export function PlanSection() {
         columns={3}
       />
 
-      {/* Medicament */}
-      <Dropdown
-        label="Intracanal Medicament"
-        value={noteData.medicament}
-        options={medicaments}
-        onChange={(value) => updateField('medicament', value)}
-        placeholder="Select medicament..."
-      />
+      {/* Restoration (per tooth, shown globally after irrigation) */}
+      {noteData.toothTreatmentPlans.some((p) => p.toothNumber) && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Restoration
+          </label>
+          <div className="space-y-2">
+            {noteData.toothTreatmentPlans.filter((p) => p.toothNumber).map((plan) => (
+              <div key={plan.id} className="flex items-center gap-3">
+                <span className="text-sm text-gray-600 dark:text-gray-400 w-16 shrink-0">
+                  Tooth #{plan.toothNumber}
+                </span>
+                <select
+                  value={plan.restoration}
+                  onChange={(e) => updateToothTreatmentPlan(plan.id, 'restoration', e.target.value)}
+                  className="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select restoration...</option>
+                  {restorationTypes.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Complications */}
       <div className="mb-4">

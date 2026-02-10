@@ -266,16 +266,14 @@ export function SubjectiveSection() {
             selectedValues={noteData.painCharacteristics}
             onChange={(values) => updateField('painCharacteristics', values)}
             columns={3}
+            inlineTextInputs={{
+              history_other: {
+                value: noteData.painHistoryOther,
+                onChange: (value) => updateField('painHistoryOther', value),
+                placeholder: 'Specify...',
+              },
+            }}
           />
-
-          {noteData.painCharacteristics.includes('history_other') && (
-            <TextInput
-              label="Specify Pain History"
-              value={noteData.painHistoryOther}
-              onChange={(value) => updateField('painHistoryOther', value)}
-              placeholder="Enter pain history details..."
-            />
-          )}
         </>
       )}
     </div>
