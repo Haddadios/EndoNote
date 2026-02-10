@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNote } from '../../context/NoteContext';
-import { Dropdown } from '../common';
+import { Dropdown, Odontogram } from '../common';
 import {
   universalTeeth,
   fdiTeeth,
@@ -100,6 +100,30 @@ export function AssessmentSection() {
     removeToothDiagnosis,
     updateTooth,
   } = useNote();
+
+  const isContinuingTreatment = noteData.visitType === 'continuing_treatment';
+
+  const handleToothSelect = (toothNumber: string) => {
+    const existingDiagnosis = noteData.toothDiagnoses.find((d) => d.toothNumber === toothNumber);
+    if (existingDiagnosis) {
+      if (noteData.toothDiagnoses.length > 1) {
+        removeToothDiagnosis(existingDiagnosis.id);
+        const remaining = noteData.toothDiagnoses.find((d) => d.toothNumber && d.id !== existingDiagnosis.id);
+        updateTooth(remaining?.toothNumber || '');
+      } else {
+        updateToothDiagnosis(existingDiagnosis.id, 'toothNumber', '');
+        updateTooth('');
+      }
+    } else {
+      const emptyDiagnosis = noteData.toothDiagnoses.find((d) => !d.toothNumber);
+      if (emptyDiagnosis) {
+        updateToothDiagnosis(emptyDiagnosis.id, 'toothNumber', toothNumber);
+      } else {
+        addToothDiagnosis(toothNumber);
+      }
+      if (!noteData.toothNumber) updateTooth(toothNumber);
+    }
+  };
   const [clearedState, setClearedState] = useState<{
     toothDiagnoses: ToothDiagnosis[];
     assessmentNotes: string;
@@ -173,6 +197,44 @@ export function AssessmentSection() {
           >
             Undo
           </button>
+        </div>
+      )}
+
+      {/* Odontogram for continuing treatment */}
+      {isContinuingTreatment && (
+        <div className="mb-6">
+          <h3 className="text-md font-medium text-gray-700 dark:text-gray-200 mb-3">Select Teeth (click to select/deselect)</h3>
+          <Odontogram
+            selectedTeeth={noteData.toothDiagnoses.filter((d) => d.toothNumber).map((d) => d.toothNumber)}
+            onToothSelect={handleToothSelect}
+            notation={preferences.toothNotation}
+          />
+          {noteData.toothDiagnoses.some((d) => d.toothNumber) && (
+            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-sm border border-blue-200 dark:border-blue-800">
+              <span className="text-blue-700 dark:text-blue-300 font-medium">
+                Selected {noteData.toothDiagnoses.filter((d) => d.toothNumber).length === 1 ? 'Tooth' : 'Teeth'}:
+              </span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {noteData.toothDiagnoses.filter((d) => d.toothNumber).map((d) => (
+                  <span
+                    key={d.id}
+                    className="inline-flex items-center gap-2 px-3 py-1 bg-blue-600 dark:bg-blue-700 text-white rounded-full text-xs font-medium"
+                  >
+                    #{d.toothNumber}
+                    <button
+                      type="button"
+                      onClick={() => handleToothSelect(d.toothNumber)}
+                      className="ml-1 hover:bg-blue-700 dark:hover:bg-blue-800 rounded-full p-0.5"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
