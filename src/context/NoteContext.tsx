@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { NoteData, Template, Preferences, ToothDiagnosis, CanalMAF, AnesthesiaAmounts, TemplateScope, SavedDraft, ToothTreatmentPlan } from '../types';
+import type { NoteData, Template, Preferences, ProcedureDefaults, ToothDiagnosis, CanalMAF, AnesthesiaAmounts, TemplateScope, SavedDraft, ToothTreatmentPlan } from '../types';
 import { getToothType } from '../data';
 import { templateScopeFields } from '../utils/templateUtils';
 
@@ -12,7 +12,7 @@ const createEmptyToothDiagnosis = (toothNumber = ''): ToothDiagnosis => ({
   pulpalDiagnosis: '',
   periapicalDiagnosis: '',
   prognosis: '',
-  recommendedTreatment: '',
+  treatmentOptionsOffered: [],
 });
 
 // Helper to create empty tooth treatment plan
@@ -24,7 +24,11 @@ const createEmptyToothTreatmentPlan = (toothNumber = ''): ToothTreatmentPlan => 
   customCanalNames: [],
   canalMAFs: [],
   workingLengthMethod: [],
+  coronalFlare: [],
+  coronalFlareOther: '',
   restoration: '',
+  treatmentOutcome: '',
+  treatmentPerformed: [],
 });
 
 // Initial anesthesia amounts
@@ -137,7 +141,6 @@ const hasDraftContent = (data: NoteData): boolean => {
     data.mobility.length > 0 ||
     data.swelling.length > 0 ||
     data.radiographicFindings.length > 0 ||
-    data.treatmentOptionsOffered.length > 0 ||
     data.anesthesiaLocations.length > 0 ||
     data.canalConfiguration.length > 0 ||
     data.customCanalNames.some((name) => hasNonEmptyString(name)) ||
@@ -175,7 +178,7 @@ const hasDraftContent = (data: NoteData): boolean => {
         hasNonEmptyString(diagnosis.pulpalDiagnosis) ||
         hasNonEmptyString(diagnosis.periapicalDiagnosis) ||
         hasNonEmptyString(diagnosis.prognosis) ||
-        hasNonEmptyString(diagnosis.recommendedTreatment)
+        (diagnosis.treatmentOptionsOffered ?? []).length > 0
     )
   ) {
     return true;
@@ -187,7 +190,7 @@ const hasDraftContent = (data: NoteData): boolean => {
         maf.patent ||
         hasNonEmptyString(maf.workingLength) ||
         hasNonEmptyString(maf.referencePoint) ||
-        hasNonEmptyString(maf.fileSystem) ||
+        (Array.isArray(maf.fileSystem) ? maf.fileSystem.length > 0 : hasNonEmptyString(maf.fileSystem as unknown as string)) ||
         hasNonEmptyString(maf.size) ||
         hasNonEmptyString(maf.taper) ||
         hasNonEmptyString(maf.obturationTechnique) ||
@@ -213,7 +216,7 @@ const hasDraftContent = (data: NoteData): boolean => {
             maf.patent ||
             hasNonEmptyString(maf.workingLength) ||
             hasNonEmptyString(maf.referencePoint) ||
-            hasNonEmptyString(maf.fileSystem) ||
+            (Array.isArray(maf.fileSystem) ? maf.fileSystem.length > 0 : hasNonEmptyString(maf.fileSystem as unknown as string)) ||
             hasNonEmptyString(maf.size) ||
             hasNonEmptyString(maf.taper) ||
             hasNonEmptyString(maf.obturationTechnique) ||
@@ -283,8 +286,6 @@ const initialNoteData: NoteData = {
   referralComments: '',
 
   // Plan
-  treatmentOptionsOffered: [],
-  treatmentOptionsOfferedOther: '',
   treatmentComments: '',
   consentGiven: false,
   anesthesiaAmounts: { ...initialAnesthesiaAmounts },
@@ -302,6 +303,8 @@ const initialNoteData: NoteData = {
   workingLengthMethod: [],
   canalMAFs: [],
   restoration: '',
+
+  proceduralSteps: {},
 
   irrigationProtocol: [],
   medicament: '',
@@ -341,11 +344,27 @@ const normalizeNoteData = (data?: Partial<NoteData>): NoteData => {
           customCanalNames: data.customCanalNames || [],
           canalMAFs: data.canalMAFs || [],
           workingLengthMethod: data.workingLengthMethod || [],
+          coronalFlare: [],
+          coronalFlareOther: '',
           restoration: data.restoration || '',
+          treatmentOutcome: '',
+          treatmentPerformed: [],
         },
       ];
     }
   }
+
+  // Migrate canalMAFs fileSystem: string → string[], and ensure sizes field exists
+  const migrateFileSystem = (mafs: CanalMAF[]): CanalMAF[] =>
+    mafs.map((m) => ({
+      ...m,
+      fileSystem: typeof (m.fileSystem as unknown) === 'string'
+        ? ((m.fileSystem as unknown as string) ? [(m.fileSystem as unknown as string)] : [])
+        : Array.isArray(m.fileSystem) ? m.fileSystem : [],
+      sizes: Array.isArray(m.sizes) ? m.sizes : [],
+      systemSizes: (m.systemSizes && typeof m.systemSizes === 'object' && !Array.isArray(m.systemSizes)) ? m.systemSizes : {},
+      systemTapers: (m.systemTapers && typeof m.systemTapers === 'object' && !Array.isArray(m.systemTapers)) ? m.systemTapers : {},
+    }));
 
   return {
     ...merged,
@@ -353,14 +372,54 @@ const normalizeNoteData = (data?: Partial<NoteData>): NoteData => {
     anesthesiaAmounts: { ...initialAnesthesiaAmounts, ...(data?.anesthesiaAmounts ?? {}) },
     anesthesiaLocationMapping: data?.anesthesiaLocationMapping ?? {},
     anesthesiaLocationSides: data?.anesthesiaLocationSides ?? {},
+    proceduralSteps: data?.proceduralSteps ?? {},
     toothDiagnoses: normalizeToothDiagnoses(data?.toothDiagnoses, data?.toothNumber),
-    toothTreatmentPlans: treatmentPlans,
+    toothTreatmentPlans: treatmentPlans.map((plan) => ({
+      ...plan,
+      treatmentOutcome: plan.treatmentOutcome ?? '',
+      treatmentPerformed: plan.treatmentPerformed ?? [],
+      canalMAFs: migrateFileSystem(plan.canalMAFs),
+    })),
+    canalMAFs: migrateFileSystem(merged.canalMAFs),
   };
+};
+
+const applyDefaultsFromPreferences = (prefs: Preferences): Partial<NoteData> => {
+  const d = prefs.generalDefaults;
+  const result: Partial<NoteData> = {};
+  if (d.isolation.length > 0) result.isolation = d.isolation;
+  if (d.irrigationProtocol.length > 0) result.irrigationProtocol = d.irrigationProtocol;
+  if (d.postOpInstructions.length > 0) result.postOpInstructions = d.postOpInstructions;
+  if (d.medicament) result.medicament = d.medicament;
+  if (d.followUp) result.followUp = d.followUp;
+  if (d.injectionLocations.length > 0) result.anesthesiaLocations = d.injectionLocations;
+  return result;
+};
+
+const emptyProcedureDefaults: ProcedureDefaults = {
+  anestheticTypes: [],
+  injectionLocations: [],
+  isolation: [],
+  fileSystems: [],
+  workingLengthMethod: [],
+  obturationTechnique: '',
+  obturationMaterial: '',
+  obturationSealer: '',
+  medicament: '',
+  irrigationProtocol: [],
+  temporaryRestoration: '',
+  permanentRestoration: '',
+  postOpInstructions: [],
+  followUp: '',
+  prognosis: '',
 };
 
 const initialPreferences: Preferences = {
   toothNotation: 'universal',
   darkMode: true,
+  defaultCarpuleVolume: '1.8',
+  generalDefaults: { ...emptyProcedureDefaults },
+  defaultsByProcedure: {},
 };
 
 interface State {
@@ -374,14 +433,15 @@ type Action =
   | { type: 'UPDATE_FIELD'; field: keyof NoteData; value: NoteData[keyof NoteData] }
   | { type: 'UPDATE_TOOTH'; toothNumber: string }
   | { type: 'ADD_TOOTH_DIAGNOSIS'; toothNumber?: string }
-  | { type: 'UPDATE_TOOTH_DIAGNOSIS'; id: string; field: keyof ToothDiagnosis; value: string }
+  | { type: 'UPDATE_TOOTH_DIAGNOSIS'; id: string; field: keyof ToothDiagnosis; value: string | string[] }
   | { type: 'REMOVE_TOOTH_DIAGNOSIS'; id: string }
-  | { type: 'UPDATE_CANAL_MAF'; canal: string; field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string | boolean }
+  | { type: 'UPDATE_CANAL_MAF'; canal: string; field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'sizes' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string | boolean | string[] }
   | { type: 'ADD_TOOTH_TREATMENT_PLAN'; toothNumber?: string }
   | { type: 'UPDATE_TOOTH_TREATMENT_PLAN'; id: string; field: keyof ToothTreatmentPlan; value: ToothTreatmentPlan[keyof ToothTreatmentPlan] }
   | { type: 'REMOVE_TOOTH_TREATMENT_PLAN'; id: string }
-  | { type: 'UPDATE_TOOTH_TREATMENT_CANAL_MAF'; planId: string; canal: string; field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string | boolean }
-  | { type: 'RESET_FORM' }
+  | { type: 'UPDATE_TOOTH_TREATMENT_CANAL_MAF'; planId: string; canal: string; field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'sizes' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer'; value: string | boolean | string[] }
+  | { type: 'UPDATE_TOOTH_TREATMENT_SYSTEM_SIZE'; planId: string; canal: string; system: string; size: string; taper: string }
+  | { type: 'RESET_FORM'; defaults?: Partial<NoteData> }
   | { type: 'APPLY_TEMPLATE'; noteData: NoteData }
   | { type: 'UPSERT_TEMPLATE'; template: Template }
   | { type: 'RENAME_TEMPLATE'; id: string; name: string }
@@ -438,7 +498,7 @@ function reducer(state: State, action: Action): State {
         if (d.id === action.id) {
           const updated = { ...d, [action.field]: action.value };
           // Update tooth type if tooth number changed
-          if (action.field === 'toothNumber') {
+          if (action.field === 'toothNumber' && typeof action.value === 'string') {
             updated.toothType = getToothType(action.value);
           }
           return updated;
@@ -523,9 +583,12 @@ function reducer(state: State, action: Action): State {
                 patent: false,
                 workingLength: '',
                 referencePoint: '',
-                fileSystem: '',
+                fileSystem: [],
                 size: '',
+                sizes: [],
+                systemSizes: {},
                 taper: '',
+                systemTapers: {},
                 obturationTechnique: '',
                 obturationMaterial: '',
                 obturationSealer: '',
@@ -547,6 +610,38 @@ function reducer(state: State, action: Action): State {
       };
     }
 
+    case 'UPDATE_TOOTH_TREATMENT_SYSTEM_SIZE': {
+      const updatedPlans = state.noteData.toothTreatmentPlans.map((plan) => {
+        if (plan.id !== action.planId) return plan;
+        const existingIndex = plan.canalMAFs.findIndex((m) => m.canal === action.canal);
+        let updatedMAFs: CanalMAF[];
+        if (existingIndex >= 0) {
+          updatedMAFs = plan.canalMAFs.map((m, i) => {
+            if (i !== existingIndex) return m;
+            const nextSizes = { ...m.systemSizes };
+            const nextTapers = { ...m.systemTapers };
+            if (action.size) nextSizes[action.system] = action.size;
+            else delete nextSizes[action.system];
+            if (action.taper) nextTapers[action.system] = action.taper;
+            else delete nextTapers[action.system];
+            return { ...m, systemSizes: nextSizes, systemTapers: nextTapers };
+          });
+        } else {
+          const nextSizes: Record<string, string> = {};
+          const nextTapers: Record<string, string> = {};
+          if (action.size) nextSizes[action.system] = action.size;
+          if (action.taper) nextTapers[action.system] = action.taper;
+          updatedMAFs = [...plan.canalMAFs, {
+            canal: action.canal, patent: false, workingLength: '', referencePoint: '',
+            fileSystem: [], size: '', sizes: [], systemSizes: nextSizes, taper: '', systemTapers: nextTapers,
+            obturationTechnique: '', obturationMaterial: '', obturationSealer: '',
+          }];
+        }
+        return { ...plan, canalMAFs: updatedMAFs };
+      });
+      return { ...state, noteData: { ...state.noteData, toothTreatmentPlans: updatedPlans } };
+    }
+
     case 'UPDATE_CANAL_MAF': {
       const existingIndex = state.noteData.canalMAFs.findIndex((m) => m.canal === action.canal);
       let updatedMAFs: CanalMAF[];
@@ -563,9 +658,12 @@ function reducer(state: State, action: Action): State {
             patent: false,
             workingLength: '',
             referencePoint: '',
-            fileSystem: '',
+            fileSystem: [],
             size: '',
+            sizes: [],
+            systemSizes: {},
             taper: '',
+            systemTapers: {},
             obturationTechnique: '',
             obturationMaterial: '',
             obturationSealer: '',
@@ -588,6 +686,7 @@ function reducer(state: State, action: Action): State {
         ...state,
         noteData: {
           ...initialNoteData,
+          ...(action.defaults ?? {}),
           toothDiagnoses: [createEmptyToothDiagnosis()],
           toothTreatmentPlans: [],
         },
@@ -684,13 +783,14 @@ interface NoteContextType {
   updateField: <K extends keyof NoteData>(field: K, value: NoteData[K]) => void;
   updateTooth: (toothNumber: string) => void;
   addToothDiagnosis: (toothNumber?: string) => void;
-  updateToothDiagnosis: (id: string, field: keyof ToothDiagnosis, value: string) => void;
+  updateToothDiagnosis: (id: string, field: keyof ToothDiagnosis, value: string | string[]) => void;
   removeToothDiagnosis: (id: string) => void;
-  updateCanalMAF: (canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => void;
+  updateCanalMAF: (canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'sizes' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean | string[]) => void;
   addToothTreatmentPlan: (toothNumber?: string) => void;
   updateToothTreatmentPlan: <K extends keyof ToothTreatmentPlan>(id: string, field: K, value: ToothTreatmentPlan[K]) => void;
   removeToothTreatmentPlan: (id: string) => void;
-  updateToothTreatmentCanalMAF: (planId: string, canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => void;
+  updateToothTreatmentCanalMAF: (planId: string, canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'sizes' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean | string[]) => void;
+  updateToothTreatmentSystemSize: (planId: string, canal: string, system: string, size: string, taper: string) => void;
   resetForm: () => void;
   loadTemplate: (template: Template) => void;
   saveTemplate: (template: Template) => void;
@@ -713,6 +813,8 @@ const normalizeTemplate = (template: Partial<Template>): Template => {
     data,
     scope,
     visitType,
+    toothType: template.toothType ?? 'any',
+    procedureTypes: template.procedureTypes ?? 'any',
     createdAt: template.createdAt || new Date().toISOString(),
   };
 };
@@ -864,7 +966,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'ADD_TOOTH_DIAGNOSIS', toothNumber });
   };
 
-  const updateToothDiagnosis = (id: string, field: keyof ToothDiagnosis, value: string) => {
+  const updateToothDiagnosis = (id: string, field: keyof ToothDiagnosis, value: string | string[]) => {
     dispatch({ type: 'UPDATE_TOOTH_DIAGNOSIS', id, field, value });
   };
 
@@ -872,7 +974,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'REMOVE_TOOTH_DIAGNOSIS', id });
   };
 
-  const updateCanalMAF = (canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean) => {
+  const updateCanalMAF = (canal: string, field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'sizes' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer', value: string | boolean | string[]) => {
     dispatch({ type: 'UPDATE_CANAL_MAF', canal, field, value });
   };
 
@@ -900,14 +1002,18 @@ export function NoteProvider({ children }: { children: ReactNode }) {
   const updateToothTreatmentCanalMAF = (
     planId: string,
     canal: string,
-    field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer',
-    value: string | boolean
+    field: 'patent' | 'workingLength' | 'referencePoint' | 'fileSystem' | 'size' | 'sizes' | 'taper' | 'obturationTechnique' | 'obturationMaterial' | 'obturationSealer',
+    value: string | boolean | string[]
   ) => {
     dispatch({ type: 'UPDATE_TOOTH_TREATMENT_CANAL_MAF', planId, canal, field, value });
   };
 
+  const updateToothTreatmentSystemSize = (planId: string, canal: string, system: string, size: string, taper: string) => {
+    dispatch({ type: 'UPDATE_TOOTH_TREATMENT_SYSTEM_SIZE', planId, canal, system, size, taper });
+  };
+
   const resetForm = () => {
-    dispatch({ type: 'RESET_FORM' });
+    dispatch({ type: 'RESET_FORM', defaults: applyDefaultsFromPreferences(state.preferences) });
   };
 
   const loadTemplate = (template: Template) => {
@@ -965,7 +1071,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
   const clearDraftAndReset = () => {
     clearSavedDraft();
     setOutputEdits(initialOutputEdits);
-    dispatch({ type: 'RESET_FORM' });
+    dispatch({ type: 'RESET_FORM', defaults: applyDefaultsFromPreferences(state.preferences) });
   };
 
   const saveDraftToHistory = () => {
@@ -1041,6 +1147,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
         updateToothTreatmentPlan,
         removeToothTreatmentPlan,
         updateToothTreatmentCanalMAF,
+        updateToothTreatmentSystemSize,
         resetForm,
         loadTemplate,
         saveTemplate,

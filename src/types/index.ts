@@ -27,7 +27,27 @@ export interface ToothDiagnosis {
   pulpalDiagnosis: string;
   periapicalDiagnosis: string;
   prognosis: string;
-  recommendedTreatment: string;
+  treatmentOptionsOffered: string[];
+}
+
+export type CarpuleVolume = '1.7' | '1.8' | '2.2';
+
+export interface ProcedureDefaults {
+  anestheticTypes: string[];
+  injectionLocations: string[];
+  isolation: string[];
+  fileSystems: string[];
+  workingLengthMethod: string[];
+  obturationTechnique: string;
+  obturationMaterial: string;
+  obturationSealer: string;
+  medicament: string;
+  irrigationProtocol: string[];
+  temporaryRestoration: string;
+  permanentRestoration: string;
+  postOpInstructions: string[];
+  followUp: string;
+  prognosis: string;
 }
 
 export interface CanalMAF {
@@ -35,9 +55,12 @@ export interface CanalMAF {
   patent: boolean;
   workingLength: string;
   referencePoint: string;
-  fileSystem: string;
+  fileSystem: string[];
   size: string;
+  sizes: string[];
+  systemSizes: Record<string, string>;
   taper: string;
+  systemTapers: Record<string, string>;
   obturationTechnique: string;
   obturationMaterial: string;
   obturationSealer: string;
@@ -51,7 +74,11 @@ export interface ToothTreatmentPlan {
   customCanalNames: string[];
   canalMAFs: CanalMAF[];
   workingLengthMethod: string[];
+  coronalFlare: string[];
+  coronalFlareOther: string;
   restoration: string;
+  treatmentOutcome: 'finish' | 'single_visit' | 'pulp_extirpation' | 'cleaning_shaping' | 'open_medicate' | '';
+  treatmentPerformed: string[];
 }
 
 export interface AnesthesiaAmounts {
@@ -130,8 +157,6 @@ export interface NoteData {
   referralComments: string;
 
   // Plan
-  treatmentOptionsOffered: string[];
-  treatmentOptionsOfferedOther: string;
   treatmentComments: string;
   consentGiven: boolean;
   anesthesiaAmounts: AnesthesiaAmounts;
@@ -150,6 +175,8 @@ export interface NoteData {
   canalMAFs: CanalMAF[];
   restoration: string;
 
+  proceduralSteps: ProceduralSteps;
+
   irrigationProtocol: string[];
   medicament: string;
   complications: string[];
@@ -167,12 +194,99 @@ export interface Template {
   data: Partial<NoteData>;
   scope: TemplateScope[];
   visitType: VisitType | 'any';
+  toothType?: ToothType | 'any';
+  procedureTypes?: string[] | 'any';
   createdAt: string;
+}
+
+export interface ApicalMicrosurgerySteps {
+  rootsTreated: string;
+  flapDesign: string;
+  osteotomyDescription: string;
+  resectionMm: string;
+  retroPrepDepthMm: string;
+  resectionAngle: string;
+  methyleneBlueFindings: string;
+  retroMaterial: string;
+  graft: string;
+  hemostaticAgent: string;
+  sutureMaterial: string;
+  sutureCount: string;
+  biopsySent: boolean;
+  surgicalNotes: string;
+}
+
+export interface HemisectionSteps {
+  rootsRetained: string[];
+  rootsResected: string[];
+  crownRemovedFirst: boolean;
+  hemisectionNotes: string;
+}
+
+export interface RootResectionSteps {
+  rootsResected: string[];
+  resectionMm: string;
+  resectionNotes: string;
+}
+
+export interface ApexificationSteps {
+  apicalPlugMaterial: string;
+  plugThicknessMm: string;
+  apicalStopSize: string;
+  apexificationNotes: string;
+}
+
+export interface ApexogenesisSteps {
+  pulpCapMaterial: string;
+  pulpotomyLevel: string;
+  apexogenesisNotes: string;
+}
+
+export interface RegenerativeEndoSteps {
+  bloodClotAchieved: boolean;
+  scaffoldType: string;
+  antibioticPaste: string;
+  bioceramicPlugPlaced: boolean;
+  regenNotes: string;
+}
+
+export interface IntentionalReplantationSteps {
+  extraOralTimeMins: string;
+  storageMedia: string;
+  retroPrepDone: boolean;
+  retroMaterial: string;
+  splintType: string;
+  splintDurationWeeks: string;
+  replantationNotes: string;
+}
+
+export interface AutotransplantationSteps {
+  donorTooth: string;
+  recipientSite: string;
+  rootDevStage: string;
+  splintType: string;
+  splintDurationWeeks: string;
+  rctPlan: string;
+  autotransplantNotes: string;
+}
+
+export interface ProceduralSteps {
+  apical_microsurgery?: ApicalMicrosurgerySteps;
+  hemisection?: HemisectionSteps;
+  root_resection?: RootResectionSteps;
+  apexification?: ApexificationSteps;
+  apexogenesis?: ApexogenesisSteps;
+  regenerative_endo?: RegenerativeEndoSteps;
+  intentional_replantation?: IntentionalReplantationSteps;
+  autotransplantation?: AutotransplantationSteps;
 }
 
 export interface Preferences {
   toothNotation: ToothNotation;
   darkMode: boolean;
+  defaultCarpuleVolume: CarpuleVolume;
+  generalDefaults: ProcedureDefaults;
+  defaultsByProcedure: Record<string, ProcedureDefaults>;
 }
 
 export interface SavedDraft {

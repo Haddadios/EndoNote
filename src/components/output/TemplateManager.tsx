@@ -5,7 +5,6 @@ import { buildTemplateData, templateScopeLabels } from '../../utils/templateUtil
 import {
   pulpalDiagnoses,
   periapicalDiagnoses,
-  treatmentTypes,
   treatmentOptionsOffered,
 } from '../../data';
 
@@ -83,9 +82,9 @@ export function TemplateManager() {
       data.toothDiagnoses?.[0];
     const pulpal = getLabel(pulpalDiagnoses, primaryDiagnosis?.pulpalDiagnosis);
     const periapical = getLabel(periapicalDiagnoses, primaryDiagnosis?.periapicalDiagnosis);
-    const recommendedTreatment = getLabel(treatmentTypes, primaryDiagnosis?.recommendedTreatment);
-    const offeredTreatment = getLabel(treatmentOptionsOffered, data.treatmentOptionsOffered?.[0]);
-    const treatment = recommendedTreatment || offeredTreatment;
+    const offeredTreatment = getLabel(treatmentOptionsOffered, (primaryDiagnosis?.treatmentOptionsOffered ?? [])[0]);
+    const performedTreatment = getLabel(treatmentOptionsOffered, data.toothTreatmentPlans?.flatMap((p) => p.treatmentPerformed ?? [])[0] ?? '');
+    const treatment = offeredTreatment || performedTreatment;
 
     const parts = [
       tooth ? `Tooth #${tooth}` : null,

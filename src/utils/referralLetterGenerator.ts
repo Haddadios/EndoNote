@@ -11,6 +11,17 @@ import {
   restorationTypes,
   canalConfigurationToCanals,
   treatmentLabels,
+  retroMaterials,
+  graftOptions,
+  antibioticPastes,
+  regenScaffolds,
+  storageMedia,
+  pulpCapMaterials,
+  apexPlugMaterials,
+  rootDevStages,
+  splintTypes,
+  replantRctPlan,
+  pulpotomyLevels,
 } from '../data';
 
 const placeholderDate = 'Click or tap to enter a date.';
@@ -18,6 +29,9 @@ const placeholderItem = '';
 
 const findLabel = (options: { value: string; label: string }[], value?: string) =>
   options.find((opt) => opt.value === value)?.label || '';
+
+const RCT_TYPES = new Set(['initial_rct', 'continuing_rct', 'ns_rerct']);
+const noTreatmentValues = new Set(['no_treatment', 'no_treatment_monitoring', 'extraction', 'other']);
 
 export function generateReferralLetter(noteData: NoteData) {
   // Collect all teeth from diagnoses
@@ -48,11 +62,10 @@ export function generateReferralLetter(noteData: NoteData) {
 
   const selectedTreatmentValue =
     noteData.treatmentPerformed ||
-    noteData.treatmentOptionsOffered[0] ||
-    primaryDiagnosis?.recommendedTreatment ||
+    noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? [])[0] ||
+    primaryDiagnosis?.treatmentOptionsOffered?.[0] ||
     '';
 
-  const noTreatmentValues = new Set(['no_treatment', 'no_treatment_monitoring', 'extraction', 'other']);
   const hasTreatmentSelected = Boolean(selectedTreatmentValue) && !noTreatmentValues.has(selectedTreatmentValue);
 
   // Default to current date in format: "MM/DD/YYYY"
@@ -86,7 +99,7 @@ export function generateReferralLetter(noteData: NoteData) {
         consultationSection.push(`  Tooth #${diagnosis.toothNumber}:`);
         const pulpalDiagnosis = findLabel(pulpalDiagnoses, diagnosis.pulpalDiagnosis) || placeholderItem;
         const periapicalDiagnosis = findLabel(periapicalDiagnoses, diagnosis.periapicalDiagnosis) || placeholderItem;
-        const treatmentRecommended = treatmentLabels[diagnosis.recommendedTreatment as keyof typeof treatmentLabels] || placeholderItem;
+        const treatmentRecommended = treatmentLabels[(diagnosis.treatmentOptionsOffered ?? [])[0] as keyof typeof treatmentLabels] || placeholderItem;
         const prognosis = findLabel(prognosisOptions, diagnosis.prognosis) || placeholderItem;
 
         consultationSection.push(`    Pulpal Diagnosis: ${pulpalDiagnosis}`);
@@ -99,7 +112,7 @@ export function generateReferralLetter(noteData: NoteData) {
     // Legacy format fallback
     const pulpalDiagnosis = findLabel(pulpalDiagnoses, primaryDiagnosis?.pulpalDiagnosis) || placeholderItem;
     const periapicalDiagnosis = findLabel(periapicalDiagnoses, primaryDiagnosis?.periapicalDiagnosis) || placeholderItem;
-    const treatmentRecommended = treatmentLabels[primaryDiagnosis?.recommendedTreatment as keyof typeof treatmentLabels] || placeholderItem;
+    const treatmentRecommended = treatmentLabels[(primaryDiagnosis?.treatmentOptionsOffered ?? [])[0] as keyof typeof treatmentLabels] || placeholderItem;
     const prognosis = findLabel(prognosisOptions, primaryDiagnosis?.prognosis) || placeholderItem;
 
     consultationSection.push(`  Pulpal Diagnosis: ${pulpalDiagnosis}`);
@@ -108,17 +121,128 @@ export function generateReferralLetter(noteData: NoteData) {
     consultationSection.push(`  Prognosis: ${prognosis}`);
   }
 
+  // Helper: build detail lines for a single treatment type performed on a tooth
+  const buildTreatmentDetailLines = (
+    treatmentType: string,
+    plan: typeof noteData.toothTreatmentPlans[0] | null,
+    indent: string
+  ): string[] => {
+    const lines: string[] = [];
+    const ps = noteData.proceduralSteps;
+
+    if (RCT_TYPES.has(treatmentType) && plan) {
+      // Canal count
+      const canalSet = new Set<string>();
+      plan.canalConfiguration.forEach((config) => {
+        if (config === 'other') {
+          plan.customCanalNames.forEach((name) => {
+            const trimmed = name.trim();
+            if (trimmed) canalSet.add(trimmed);
+          });
+        } else {
+          (canalConfigurationToCanals[config] || []).forEach((c) => canalSet.add(c));
+        }
+      });
+      const canalCount = canalSet.size > 0 ? canalSet.size.toString() : plan.canalMAFs.length ? plan.canalMAFs.length.toString() : '';
+
+      const _firstPlanFS = plan.canalMAFs.find((m) => m.fileSystem.length > 0)?.fileSystem ?? [];
+      const instrumentedWith = _firstPlanFS.map((s) => findLabel(instrumentationSystems, s)).filter(Boolean).join(' + ') || placeholderItem;
+      const obturationMaterialsUsed = Array.from(
+        new Set(plan.canalMAFs.map((m) => findLabel(obturationMaterials, m.obturationMaterial)).filter(Boolean))
+      );
+      const obturationSealersUsed = Array.from(
+        new Set(plan.canalMAFs.map((m) => findLabel(obturationSealers, m.obturationSealer)).filter(Boolean))
+      );
+      const obturatedWith = obturationMaterialsUsed.join(', ') || placeholderItem;
+      const obturationSealer = obturationSealersUsed.join(', ');
+      const obturationTechnique = findLabel(obturationTechniques, plan.canalMAFs.find((m) => m.obturationTechnique)?.obturationTechnique) || '';
+
+      const canalLineParts: string[] = [];
+      canalLineParts.push(canalCount ? `${canalCount} canal(s)` : 'Canal(s)');
+      canalLineParts.push(instrumentedWith ? `instrumented with ${instrumentedWith}` : 'instrumented');
+      canalLineParts.push(obturatedWith ? `and obturated with ${obturatedWith}` : 'and obturated');
+      if (obturationTechnique) canalLineParts.push(`using ${obturationTechnique}`);
+      if (obturationSealer) canalLineParts.push(`and ${obturationSealer}`);
+      lines.push(`${indent}${canalLineParts.join(' ')}.`);
+
+      const temporizedWith = findLabel(restorationTypes, plan.restoration) || placeholderItem;
+      lines.push(`${indent}Temporized/Restored with: ${temporizedWith}`);
+
+    } else if (treatmentType === 'apical_microsurgery' && ps.apical_microsurgery) {
+      const s = ps.apical_microsurgery;
+      if (s.retroMaterial) lines.push(`${indent}Retrograde Fill Material: ${findLabel(retroMaterials, s.retroMaterial)}`);
+      if (s.graft) lines.push(`${indent}Graft: ${findLabel(graftOptions, s.graft)}`);
+      if (s.biopsySent) lines.push(`${indent}Biopsy sent for pathology.`);
+
+    } else if (treatmentType === 'hemisection' && ps.hemisection) {
+      const s = ps.hemisection;
+      if (s.rootsRetained.length) lines.push(`${indent}Roots Retained: ${s.rootsRetained.join(', ')}`);
+      if (s.rootsResected.length) lines.push(`${indent}Roots Resected: ${s.rootsResected.join(', ')}`);
+      if (s.crownRemovedFirst) lines.push(`${indent}Crown removed prior to hemisection.`);
+      if (s.hemisectionNotes) lines.push(`${indent}Notes: ${s.hemisectionNotes}`);
+
+    } else if (treatmentType === 'root_resection' && ps.root_resection) {
+      const s = ps.root_resection;
+      if (s.rootsResected.length) lines.push(`${indent}Roots Resected: ${s.rootsResected.join(', ')}`);
+      if (s.resectionMm) lines.push(`${indent}Resection Length: ${s.resectionMm} mm`);
+      if (s.resectionNotes) lines.push(`${indent}Notes: ${s.resectionNotes}`);
+
+    } else if (treatmentType === 'apexification' && ps.apexification) {
+      const s = ps.apexification;
+      if (s.apicalPlugMaterial) lines.push(`${indent}Apical Plug Material: ${findLabel(apexPlugMaterials, s.apicalPlugMaterial)}`);
+      if (s.plugThicknessMm) lines.push(`${indent}Plug Thickness: ${s.plugThicknessMm} mm`);
+      if (s.apicalStopSize) lines.push(`${indent}Apical Stop Size: ${s.apicalStopSize}`);
+      if (s.apexificationNotes) lines.push(`${indent}Notes: ${s.apexificationNotes}`);
+
+    } else if (treatmentType === 'apexogenesis' && ps.apexogenesis) {
+      const s = ps.apexogenesis;
+      if (s.pulpCapMaterial) lines.push(`${indent}Pulp Cap Material: ${findLabel(pulpCapMaterials, s.pulpCapMaterial)}`);
+      if (s.pulpotomyLevel) lines.push(`${indent}Pulpotomy Level: ${findLabel(pulpotomyLevels, s.pulpotomyLevel)}`);
+      if (s.apexogenesisNotes) lines.push(`${indent}Notes: ${s.apexogenesisNotes}`);
+
+    } else if (treatmentType === 'regenerative_endo' && ps.regenerative_endo) {
+      const s = ps.regenerative_endo;
+      if (s.scaffoldType) lines.push(`${indent}Scaffold: ${findLabel(regenScaffolds, s.scaffoldType)}`);
+      if (s.antibioticPaste) lines.push(`${indent}Antibiotic Paste: ${findLabel(antibioticPastes, s.antibioticPaste)}`);
+      if (s.bloodClotAchieved) lines.push(`${indent}Blood clot achieved.`);
+      if (s.bioceramicPlugPlaced) lines.push(`${indent}Bioceramic plug placed.`);
+      if (s.regenNotes) lines.push(`${indent}Notes: ${s.regenNotes}`);
+
+    } else if (treatmentType === 'intentional_replantation' && ps.intentional_replantation) {
+      const s = ps.intentional_replantation;
+      if (s.extraOralTimeMins) lines.push(`${indent}Extra-oral Time: ${s.extraOralTimeMins} min`);
+      if (s.storageMedia) lines.push(`${indent}Storage Media: ${findLabel(storageMedia, s.storageMedia)}`);
+      if (s.retroPrepDone) {
+        const retroLabel = s.retroMaterial ? findLabel(retroMaterials, s.retroMaterial) : '';
+        lines.push(`${indent}Retrograde preparation performed${retroLabel ? ` with ${retroLabel}` : ''}.`);
+      }
+      if (s.splintType) lines.push(`${indent}Splint: ${findLabel(splintTypes, s.splintType)}${s.splintDurationWeeks ? ` for ${s.splintDurationWeeks} weeks` : ''}`);
+      if (s.replantationNotes) lines.push(`${indent}Notes: ${s.replantationNotes}`);
+
+    } else if (treatmentType === 'autotransplantation' && ps.autotransplantation) {
+      const s = ps.autotransplantation;
+      if (s.donorTooth) lines.push(`${indent}Donor Tooth: ${s.donorTooth}`);
+      if (s.recipientSite) lines.push(`${indent}Recipient Site: ${s.recipientSite}`);
+      if (s.rootDevStage) lines.push(`${indent}Root Development Stage: ${findLabel(rootDevStages, s.rootDevStage)}`);
+      if (s.rctPlan) lines.push(`${indent}RCT Plan: ${findLabel(replantRctPlan, s.rctPlan)}`);
+      if (s.splintType) lines.push(`${indent}Splint: ${findLabel(splintTypes, s.splintType)}${s.splintDurationWeeks ? ` for ${s.splintDurationWeeks} weeks` : ''}`);
+      if (s.autotransplantNotes) lines.push(`${indent}Notes: ${s.autotransplantNotes}`);
+    }
+
+    return lines;
+  };
+
   // Build treatment completion section
   let completionSection: string[] = [];
 
   if (hasTreatmentSelected) {
     completionSection.push(`Treatment Completion Date: ${completionDate}`);
 
-    // Check if we have per-tooth treatment plans
     if (noteData.toothTreatmentPlans && noteData.toothTreatmentPlans.length > 0) {
-      // Multi-tooth treatment format
-      const planSelectedTreatment = noteData.treatmentOptionsOffered[0]
-        ? treatmentLabels[noteData.treatmentOptionsOffered[0] as keyof typeof treatmentLabels]
+      // Determine overall treatment label (first performed across all plans)
+      const _allPerformed = noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? []);
+      const planSelectedTreatment = _allPerformed[0]
+        ? treatmentLabels[_allPerformed[0] as keyof typeof treatmentLabels]
         : '';
       const treatmentPerformedLabel = treatmentLabels[noteData.treatmentPerformed as keyof typeof treatmentLabels];
       const treatmentPerformed = treatmentPerformedLabel || planSelectedTreatment || placeholderItem;
@@ -127,58 +251,24 @@ export function generateReferralLetter(noteData: NoteData) {
       completionSection.push('');
 
       noteData.toothTreatmentPlans.forEach((plan) => {
-        if (plan.toothNumber) {
-          completionSection.push(`  Tooth #${plan.toothNumber}:`);
+        if (!plan.toothNumber) return;
+        completionSection.push(`  Tooth #${plan.toothNumber}:`);
 
-          // Count canals
-          const canalSet = new Set<string>();
-          plan.canalConfiguration.forEach((config) => {
-            if (config === 'other') {
-              plan.customCanalNames.forEach((name) => {
-                const trimmed = name.trim();
-                if (trimmed) canalSet.add(trimmed);
-              });
-            } else {
-              (canalConfigurationToCanals[config] || []).forEach((c) => canalSet.add(c));
-            }
+        const performed = plan.treatmentPerformed ?? [];
+        if (performed.length === 0) {
+          // No treatment type recorded
+        } else {
+          performed.forEach((treatmentType) => {
+            const typeLabel = treatmentLabels[treatmentType as keyof typeof treatmentLabels] || treatmentType;
+            completionSection.push(`    ${typeLabel}`);
+            const details = buildTreatmentDetailLines(treatmentType, plan, '      ');
+            completionSection.push(...details);
           });
-          const canalCount = canalSet.size > 0 ? canalSet.size.toString() : plan.canalMAFs.length ? plan.canalMAFs.length.toString() : '';
+        }
 
-          // Get instrumentation and obturation details
-          const instrumentedWith = findLabel(instrumentationSystems, plan.canalMAFs.find((m) => m.fileSystem)?.fileSystem) || placeholderItem;
-          const obturationMaterialsUsed = Array.from(
-            new Set(
-              plan.canalMAFs
-                .map((m) => findLabel(obturationMaterials, m.obturationMaterial))
-                .filter(Boolean)
-            )
-          );
-          const obturationSealersUsed = Array.from(
-            new Set(
-              plan.canalMAFs
-                .map((m) => findLabel(obturationSealers, m.obturationSealer))
-                .filter(Boolean)
-            )
-          );
-          const obturatedWith = obturationMaterialsUsed.join(', ') || placeholderItem;
-          const obturationSealer = obturationSealersUsed.join(', ');
-          const obturationTechnique = findLabel(obturationTechniques, plan.canalMAFs.find((m) => m.obturationTechnique)?.obturationTechnique) || '';
-
-          const canalLineParts: string[] = [];
-          canalLineParts.push(canalCount ? `${canalCount} canal(s)` : 'Canal(s)');
-          canalLineParts.push(instrumentedWith ? `instrumented with ${instrumentedWith}` : 'instrumented');
-          canalLineParts.push(obturatedWith ? `and obturated with ${obturatedWith}` : 'and obturated');
-          if (obturationTechnique) {
-            canalLineParts.push(`using ${obturationTechnique}`);
-          }
-          if (obturationSealer) {
-            canalLineParts.push(`and ${obturationSealer}`);
-          }
-          const canalLine = canalLineParts.join(' ') + '.';
-
-          completionSection.push(`    ${canalLine}`);
-
-          const temporizedWith = findLabel(restorationTypes, plan.restoration) || placeholderItem;
+        const temporizedWith = findLabel(restorationTypes, plan.restoration);
+        if (temporizedWith && !performed.some((t) => RCT_TYPES.has(t))) {
+          // Only show restoration line here for non-RCT (RCT already emits it inside the detail block)
           completionSection.push(`    Temporized/Restored with: ${temporizedWith}`);
         }
       });
@@ -187,64 +277,28 @@ export function generateReferralLetter(noteData: NoteData) {
       completionSection.push(`  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`);
     } else {
       // Legacy single-tooth format
-      const planSelectedTreatment = noteData.treatmentOptionsOffered[0]
-        ? treatmentLabels[noteData.treatmentOptionsOffered[0] as keyof typeof treatmentLabels]
+      const _legacyPerformed = noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? []);
+      const planSelectedTreatment = _legacyPerformed[0]
+        ? treatmentLabels[_legacyPerformed[0] as keyof typeof treatmentLabels]
         : '';
       const treatmentPerformedLabel = treatmentLabels[noteData.treatmentPerformed as keyof typeof treatmentLabels];
-      const recommendedTreatmentLabel = treatmentLabels[primaryDiagnosis?.recommendedTreatment as keyof typeof treatmentLabels];
+      const recommendedTreatmentLabel = treatmentLabels[(primaryDiagnosis?.treatmentOptionsOffered ?? [])[0] as keyof typeof treatmentLabels];
       const treatmentPerformed = treatmentPerformedLabel || planSelectedTreatment || recommendedTreatmentLabel || placeholderItem;
 
-      const canalSet = new Set<string>();
-      noteData.canalConfiguration.forEach((config) => {
-        if (config === 'other') {
-          noteData.customCanalNames.forEach((name) => {
-            const trimmed = name.trim();
-            if (trimmed) canalSet.add(trimmed);
-          });
-        } else {
-          (canalConfigurationToCanals[config] || []).forEach((c) => canalSet.add(c));
-        }
-      });
-      const canalCount = canalSet.size > 0 ? canalSet.size.toString() : noteData.canalMAFs.length ? noteData.canalMAFs.length.toString() : '';
-      const instrumentedWith = findLabel(instrumentationSystems, noteData.canalMAFs.find((m) => m.fileSystem)?.fileSystem) || placeholderItem;
-      const obturationMaterialsUsed = Array.from(
-        new Set(
-          noteData.canalMAFs
-            .map((m) => findLabel(obturationMaterials, m.obturationMaterial))
-            .filter(Boolean)
-        )
-      );
-      const obturationSealersUsed = Array.from(
-        new Set(
-          noteData.canalMAFs
-            .map((m) => findLabel(obturationSealers, m.obturationSealer))
-            .filter(Boolean)
-        )
-      );
-      const obturatedWith = obturationMaterialsUsed.join(', ') || placeholderItem;
-      const obturationSealer = obturationSealersUsed.join(', ');
-      const obturationTechnique = findLabel(obturationTechniques, noteData.canalMAFs.find((m) => m.obturationTechnique)?.obturationTechnique) || '';
+      completionSection.push(`  Treatment Performed: ${treatmentPerformed}`);
+
+      const legacyType = noteData.treatmentPerformed || _legacyPerformed[0] || '';
+      const legacyDetails = buildTreatmentDetailLines(legacyType, null, '  ');
+      completionSection.push(...legacyDetails);
 
       const temporizedWith =
         findLabel(restorationTypes, noteData.restoration) ||
         findLabel(restorationTypes, noteData.temporizedWith) ||
         placeholderItem;
-
-      const canalLineParts: string[] = [];
-      canalLineParts.push(canalCount ? `${canalCount} canal(s)` : 'Canal(s)');
-      canalLineParts.push(instrumentedWith ? `instrumented with ${instrumentedWith}` : 'instrumented');
-      canalLineParts.push(obturatedWith ? `and obturated with ${obturatedWith}` : 'and obturated');
-      if (obturationTechnique) {
-        canalLineParts.push(`using ${obturationTechnique}`);
+      if (temporizedWith && !RCT_TYPES.has(legacyType)) {
+        completionSection.push(`  Temporized/Restored with: ${temporizedWith}`);
       }
-      if (obturationSealer) {
-        canalLineParts.push(`and ${obturationSealer}`);
-      }
-      const canalLine = canalLineParts.join(' ') + '.';
 
-      completionSection.push(`  Treatment Performed: ${treatmentPerformed}`);
-      completionSection.push(`  ${canalLine}`);
-      completionSection.push(`  Temporized/Restored with: ${temporizedWith}`);
       completionSection.push(`  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`);
     }
 

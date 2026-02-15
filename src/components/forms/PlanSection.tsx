@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNote } from '../../context/NoteContext';
 import { Dropdown, CheckboxGroup, TextInput } from '../common';
 import type { AnesthesiaAmounts, ToothTreatmentPlan, CanalMAF } from '../../types';
+import { ProceduralStepsSection } from './ProceduralStepsSection';
 import { getToothType } from '../../data';
 import {
   treatmentOptionsOffered,
@@ -9,9 +10,11 @@ import {
   anesthesiaLocations,
   isolationMethods,
   workingLengthMethods,
+  coronalFlareOptions,
   instrumentationSystems,
   mafSizes,
   mafTapers,
+  fileSystemProfiles,
   irrigationSolutions,
   irrigationTechniques,
   medicaments,
@@ -37,15 +40,19 @@ export function PlanSection() {
     updateToothTreatmentPlan,
     removeToothTreatmentPlan,
     updateToothTreatmentCanalMAF,
+    updateToothTreatmentSystemSize,
   } = useNote();
 
   const [activeTabId, setActiveTabId] = useState<string | null>(
     noteData.toothTreatmentPlans.length > 0 ? noteData.toothTreatmentPlans[0].id : null
   );
+
+  // Track plan IDs to auto-activate newly added plans
+  const prevPlanIdsRef = useRef<Set<string>>(
+    new Set(noteData.toothTreatmentPlans.map((p) => p.id))
+  );
   const [hasComplications, setHasComplications] = useState(false);
   const [clearedState, setClearedState] = useState<{
-    treatmentOptionsOffered: string[];
-    treatmentOptionsOfferedOther: string;
     treatmentComments: string;
     consentGiven: boolean;
     anesthesiaAmounts: AnesthesiaAmounts;
@@ -90,11 +97,37 @@ export function PlanSection() {
       }
     });
 
+    // Remove treatment plans for teeth no longer in Assessment
+    noteData.toothTreatmentPlans.forEach((plan) => {
+      if (plan.toothNumber && !diagnosedTeeth.includes(plan.toothNumber)) {
+        if (activeTabId === plan.id) {
+          const remaining = noteData.toothTreatmentPlans.filter(
+            (p) => p.id !== plan.id && (p.toothNumber ? diagnosedTeeth.includes(p.toothNumber) : true)
+          );
+          setActiveTabId(remaining.length > 0 ? remaining[0].id : null);
+        }
+        removeToothTreatmentPlan(plan.id);
+      }
+    });
+
     // Set active tab to first plan if none is active and we have plans
     if (!activeTabId && noteData.toothTreatmentPlans.length > 0) {
       setActiveTabId(noteData.toothTreatmentPlans[0].id);
     }
-  }, [noteData.toothDiagnoses, noteData.toothTreatmentPlans, activeTabId, addToothTreatmentPlan]);
+  }, [noteData.toothDiagnoses, noteData.toothTreatmentPlans, activeTabId, addToothTreatmentPlan, removeToothTreatmentPlan]);
+
+  // Auto-activate newly added tooth treatment plans
+  useEffect(() => {
+    const newIds = noteData.toothTreatmentPlans
+      .filter((p) => !prevPlanIdsRef.current.has(p.id))
+      .map((p) => p.id);
+
+    if (newIds.length > 0) {
+      setActiveTabId(newIds[0]);
+    }
+
+    prevPlanIdsRef.current = new Set(noteData.toothTreatmentPlans.map((p) => p.id));
+  }, [noteData.toothTreatmentPlans]);
 
   // Auto-default rubber dam isolation for specific endodontic treatments
   const rubberDamTreatments = new Set([
@@ -106,11 +139,34 @@ export function PlanSection() {
     'regenerative_endo',
   ]);
   useEffect(() => {
-    const requiresRubberDam = noteData.treatmentOptionsOffered.some((t) => rubberDamTreatments.has(t));
+    const allPerformed = noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? []);
+    const requiresRubberDam = allPerformed.some((t) => rubberDamTreatments.has(t));
     if (requiresRubberDam && !noteData.isolation.includes('rubber_dam')) {
       updateField('isolation', [...noteData.isolation, 'rubber_dam']);
     }
-  }, [noteData.treatmentOptionsOffered]);
+  }, [noteData.toothTreatmentPlans]);
+
+  // Auto-apply procedure defaults when a new procedure is added to any tooth's treatmentPerformed
+  const prevProcedures = useRef<string[]>([]);
+  useEffect(() => {
+    const allPerformed = noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? []);
+    const newlyAdded = allPerformed.filter((p) => !prevProcedures.current.includes(p));
+    newlyAdded.forEach((procedure) => {
+      const procDefaults = preferences.defaultsByProcedure[procedure];
+      if (!procDefaults) return;
+      if (procDefaults.isolation.length > 0 && noteData.isolation.length === 0)
+        updateField('isolation', procDefaults.isolation);
+      if (procDefaults.irrigationProtocol.length > 0 && noteData.irrigationProtocol.length === 0)
+        updateField('irrigationProtocol', procDefaults.irrigationProtocol);
+      if (procDefaults.postOpInstructions.length > 0 && noteData.postOpInstructions.length === 0)
+        updateField('postOpInstructions', procDefaults.postOpInstructions);
+      if (procDefaults.medicament && !noteData.medicament)
+        updateField('medicament', procDefaults.medicament);
+      if (procDefaults.followUp && !noteData.followUp)
+        updateField('followUp', procDefaults.followUp);
+    });
+    prevProcedures.current = allPerformed;
+  }, [noteData.toothTreatmentPlans]);
 
   // Sync teeth from Assessment section (manual trigger)
   const handleSyncFromAssessment = () => {
@@ -164,6 +220,8 @@ export function PlanSection() {
         updateToothTreatmentPlan(plan.id, 'canalConfiguration', activePlan.canalConfiguration);
         updateToothTreatmentPlan(plan.id, 'customCanalNames', activePlan.customCanalNames);
         updateToothTreatmentPlan(plan.id, 'workingLengthMethod', activePlan.workingLengthMethod);
+        updateToothTreatmentPlan(plan.id, 'coronalFlare', activePlan.coronalFlare);
+        updateToothTreatmentPlan(plan.id, 'coronalFlareOther', activePlan.coronalFlareOther);
         updateToothTreatmentPlan(plan.id, 'restoration', activePlan.restoration);
         // Copy canal MAFs
         updateToothTreatmentPlan(plan.id, 'canalMAFs', JSON.parse(JSON.stringify(activePlan.canalMAFs)));
@@ -232,9 +290,12 @@ export function PlanSection() {
         patent: false,
         workingLength: '',
         referencePoint: '',
-        fileSystem: '',
+        fileSystem: [],
         size: '',
+        sizes: [],
+        systemSizes: {},
         taper: '',
+        systemTapers: {},
         obturationTechnique: '',
         obturationMaterial: '',
         obturationSealer: '',
@@ -246,9 +307,12 @@ export function PlanSection() {
         patent: false,
         workingLength: '',
         referencePoint: '',
-        fileSystem: '',
+        fileSystem: [],
         size: '',
+        sizes: [],
+        systemSizes: {},
         taper: '',
+        systemTapers: {},
         obturationTechnique: '',
         obturationMaterial: '',
         obturationSealer: '',
@@ -360,8 +424,6 @@ export function PlanSection() {
 
   const handleClearSection = () => {
     setClearedState({
-      treatmentOptionsOffered: noteData.treatmentOptionsOffered,
-      treatmentOptionsOfferedOther: noteData.treatmentOptionsOfferedOther,
       treatmentComments: noteData.treatmentComments,
       consentGiven: noteData.consentGiven,
       anesthesiaAmounts: noteData.anesthesiaAmounts,
@@ -386,8 +448,6 @@ export function PlanSection() {
       referral: noteData.referral,
     });
 
-    updateField('treatmentOptionsOffered', []);
-    updateField('treatmentOptionsOfferedOther', '');
     updateField('treatmentComments', '');
     updateField('consentGiven', false);
     updateField('anesthesiaAmounts', emptyAnesthesiaAmounts);
@@ -420,8 +480,6 @@ export function PlanSection() {
       setShowUndo(false);
       return;
     }
-    updateField('treatmentOptionsOffered', clearedState.treatmentOptionsOffered);
-    updateField('treatmentOptionsOfferedOther', clearedState.treatmentOptionsOfferedOther);
     updateField('treatmentComments', clearedState.treatmentComments);
     updateField('consentGiven', clearedState.consentGiven);
     updateField('anesthesiaAmounts', clearedState.anesthesiaAmounts);
@@ -477,26 +535,106 @@ export function PlanSection() {
         </div>
       )}
 
-      {/* === GLOBAL SETTINGS - TOP === */}
+      {/* === PER-TOOTH: TOOTH NUMBER + TREATMENT PERFORMED === */}
+      <div className="mb-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-md font-medium text-gray-700 dark:text-gray-200">Per-Tooth Treatment</h3>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleSyncFromAssessment}
+              className="text-xs px-3 py-1 rounded-md border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
+              title="Create treatment plans for all teeth in Assessment section"
+            >
+              Sync from Assessment
+            </button>
+            <button
+              type="button"
+              onClick={handleAddTooth}
+              className="text-xs px-3 py-1 rounded-md border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50"
+            >
+              + Add Tooth
+            </button>
+          </div>
+        </div>
 
-      {/* Treatment Options Offered */}
-      <CheckboxGroup
-        label="Treatment Options Offered"
-        sectionLabel
-        options={treatmentOptionsOffered}
-        selectedValues={noteData.treatmentOptionsOffered}
-        onChange={(values) => updateField('treatmentOptionsOffered', values)}
-        columns={3}
-      />
+        {/* Tab Bar */}
+        {noteData.toothTreatmentPlans.length > 0 && (
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+            {noteData.toothTreatmentPlans.map((plan) => (
+              <div key={plan.id} className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTabId(plan.id)}
+                  className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-all whitespace-nowrap ${
+                    activeTabId === plan.id
+                      ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300'
+                      : 'bg-gray-100 dark:bg-gray-700 border-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {plan.toothNumber ? `#${plan.toothNumber}` : 'New Tooth'}
+                </button>
+                {noteData.toothTreatmentPlans.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTooth(plan.id)}
+                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 p-1"
+                    title="Remove this tooth"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
-      {noteData.treatmentOptionsOffered.includes('other') && (
-        <TextInput
-          label="Specify Other Treatment Option"
-          value={noteData.treatmentOptionsOfferedOther}
-          onChange={(value) => updateField('treatmentOptionsOfferedOther', value)}
-          placeholder="Enter other treatment option details..."
-        />
-      )}
+        {/* Tooth Number + Treatment Performed for active tab */}
+        {activePlan && (
+          <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Tooth Number
+              </label>
+              <input
+                type="text"
+                value={activePlan.toothNumber}
+                onChange={(e) => {
+                  const toothNumber = e.target.value;
+                  updateToothTreatmentPlan(activePlan.id, 'toothNumber', toothNumber);
+                  if (toothNumber) {
+                    updateToothTreatmentPlan(activePlan.id, 'toothType', getToothType(toothNumber));
+                  }
+                }}
+                placeholder={preferences.toothNotation === 'universal' ? 'e.g., 3, 14, 19' : 'e.g., 16, 26, 36'}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <CheckboxGroup
+              label="Treatment Performed"
+              mainOptions={treatmentOptionsOffered.filter((o) =>
+                ['initial_rct', 'continuing_rct', 'ns_rerct', 'apical_microsurgery', 'no_treatment', 'no_treatment_monitoring', 'other'].includes(o.value)
+              )}
+              moreOptions={treatmentOptionsOffered.filter((o) =>
+                !['initial_rct', 'continuing_rct', 'ns_rerct', 'apical_microsurgery', 'no_treatment', 'no_treatment_monitoring', 'other'].includes(o.value)
+              )}
+              selectedValues={activePlan.treatmentPerformed ?? []}
+              onChange={(values) => updateToothTreatmentPlan(activePlan.id, 'treatmentPerformed', values)}
+              columns={2}
+            />
+          </div>
+        )}
+
+        {noteData.toothTreatmentPlans.length === 0 && (
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+            <p className="mb-2">No teeth selected for treatment</p>
+            <p className="text-sm">
+              Use "Sync from Assessment" to import teeth or "Add Tooth" to add manually
+            </p>
+          </div>
+        )}
+      </div>
 
       <TextInput
         label="Treatment Comments"
@@ -658,97 +796,64 @@ export function PlanSection() {
         columns={4}
       />
 
-      {/* === PER-TOOTH TREATMENT - TABS === */}
+      {/* === PER-TOOTH TREATMENT DETAILS (after anesthesia/isolation) === */}
 
-      <div className="mt-6 mb-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-md font-medium text-gray-700 dark:text-gray-200">Per-Tooth Treatment</h3>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleSyncFromAssessment}
-              className="text-xs px-3 py-1 rounded-md border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
-              title="Create treatment plans for all teeth in Assessment section"
-            >
-              Sync from Assessment
-            </button>
-            <button
-              type="button"
-              onClick={handleAddTooth}
-              className="text-xs px-3 py-1 rounded-md border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50"
-            >
-              + Add Tooth
-            </button>
+      {activePlan && (
+        <div className="mt-6 mb-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-md font-medium text-gray-700 dark:text-gray-200">
+              Treatment Details
+              {activePlan.toothNumber && (
+                <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+                  — Tooth #{activePlan.toothNumber}
+                </span>
+              )}
+            </h3>
+            {noteData.toothTreatmentPlans.length > 1 && (
+              <button
+                type="button"
+                onClick={handleCopyToOtherTeeth}
+                className="text-xs px-3 py-1 rounded-md border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+              >
+                Copy Settings to All Other Teeth
+              </button>
+            )}
           </div>
-        </div>
 
-        {/* Tab Bar */}
-        {noteData.toothTreatmentPlans.length > 0 && (
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-            {noteData.toothTreatmentPlans.map((plan) => (
-              <div key={plan.id} className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveTabId(plan.id)}
-                  className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-all whitespace-nowrap ${
-                    activeTabId === plan.id
-                      ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-600 dark:border-blue-400 text-blue-700 dark:text-blue-300'
-                      : 'bg-gray-100 dark:bg-gray-700 border-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {plan.toothNumber ? `#${plan.toothNumber}` : 'New Tooth'}
-                </button>
-                {noteData.toothTreatmentPlans.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTooth(plan.id)}
-                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 p-1"
-                    title="Remove this tooth"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tab Content */}
-        {activePlan && (
           <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-            {/* Tooth Number Selection */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Tooth Number
-              </label>
-              <input
-                type="text"
-                value={activePlan.toothNumber}
-                onChange={(e) => {
-                  const toothNumber = e.target.value;
-                  updateToothTreatmentPlan(activePlan.id, 'toothNumber', toothNumber);
-                  if (toothNumber) {
-                    updateToothTreatmentPlan(activePlan.id, 'toothType', getToothType(toothNumber));
-                  }
-                }}
-                placeholder={preferences.toothNotation === 'universal' ? 'e.g., 3, 14, 19' : 'e.g., 16, 26, 36'}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+
+            {/* RCT-specific UI: Treatment Outcome + Canal details */}
+            {(activePlan.treatmentPerformed ?? []).some((t) =>
+              ['initial_rct', 'continuing_rct', 'ns_rerct'].includes(t)
+            ) && (<>
+
+            {/* Treatment Outcome Toggle */}
+            <div className="mb-4 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg">
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 block mb-2">Treatment outcome:</span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'pulp_extirpation', label: 'Pulp Extirpation & Medicate', activeClass: 'bg-orange-600 text-white shadow-md' },
+                  { value: 'cleaning_shaping', label: 'Cleaning & Shaping', activeClass: 'bg-yellow-600 text-white shadow-md' },
+                  { value: 'finish', label: 'Finishing RCT', activeClass: 'bg-green-600 text-white shadow-md' },
+                  { value: 'single_visit', label: 'Single Visit RCT', activeClass: 'bg-blue-600 text-white shadow-md' },
+                ].map(({ value, label, activeClass }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => updateToothTreatmentPlan(activePlan.id, 'treatmentOutcome', value as 'finish' | 'single_visit' | 'pulp_extirpation' | 'cleaning_shaping')}
+                    className={`px-3 py-1.5 text-sm font-medium rounded transition-all ${
+                      activePlan.treatmentOutcome === value
+                        ? activeClass
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-500'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Copy to Other Teeth Button */}
-            {noteData.toothTreatmentPlans.length > 1 && (
-              <div className="mb-4">
-                <button
-                  type="button"
-                  onClick={handleCopyToOtherTeeth}
-                  className="text-xs px-3 py-1 rounded-md border border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
-                >
-                  Copy Settings to All Other Teeth
-                </button>
-              </div>
-            )}
-
+            {activePlan.treatmentOutcome !== 'pulp_extirpation' && (<>
             {/* Canal Configuration */}
             <CheckboxGroup
               label="Canal Configuration"
@@ -790,8 +895,39 @@ export function PlanSection() {
               columns={3}
             />
 
+            {/* Coronal Flare */}
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-200 mt-4 mb-2">Coronal Flare</h4>
+            <CheckboxGroup
+              label="Method"
+              options={coronalFlareOptions}
+              selectedValues={activePlan.coronalFlare ?? []}
+              onChange={(values) => updateToothTreatmentPlan(activePlan.id, 'coronalFlare', values)}
+              columns={3}
+            />
+            {(activePlan.coronalFlare ?? []).includes('other') && (
+              <input
+                type="text"
+                value={activePlan.coronalFlareOther ?? ''}
+                onChange={(e) => updateToothTreatmentPlan(activePlan.id, 'coronalFlareOther', e.target.value)}
+                placeholder="Specify coronal flare method..."
+                className="w-full mt-2 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              />
+            )}</>)}
+
+            </>)}
+
+            {!(activePlan.treatmentPerformed ?? []).some((t) =>
+              ['initial_rct', 'continuing_rct', 'ns_rerct'].includes(t)
+            ) && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                Select a root canal treatment type above to enter treatment details.
+              </p>
+            )}
+
             {/* Per-Canal Instrumentation Setup */}
-            {selectedCanals.length > 0 && (
+            {(activePlan.treatmentPerformed ?? []).some((t) =>
+              ['initial_rct', 'continuing_rct', 'ns_rerct'].includes(t)
+            ) && activePlan.treatmentOutcome !== 'pulp_extirpation' && selectedCanals.length > 0 && (
               <div className="mt-4">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">
                   Instrumentation & Obturation (per canal)
@@ -812,7 +948,7 @@ export function PlanSection() {
                           updateToothTreatmentCanalMAF(activePlan.id, canal, 'workingLength', previousMAF.workingLength);
                         if (previousMAF.referencePoint)
                           updateToothTreatmentCanalMAF(activePlan.id, canal, 'referencePoint', previousMAF.referencePoint);
-                        if (previousMAF.fileSystem)
+                        if (previousMAF.fileSystem.length > 0)
                           updateToothTreatmentCanalMAF(activePlan.id, canal, 'fileSystem', previousMAF.fileSystem);
                         if (previousMAF.size)
                           updateToothTreatmentCanalMAF(activePlan.id, canal, 'size', previousMAF.size);
@@ -920,126 +1056,269 @@ export function PlanSection() {
                         </div>
 
                         {/* Instrumentation */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-                          <div>
-                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">File System</label>
-                            <select
-                              value={maf.fileSystem}
-                              onChange={(e) =>
-                                updateToothTreatmentCanalMAF(activePlan.id, canal, 'fileSystem', e.target.value)
-                              }
-                              className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select...</option>
-                              {instrumentationSystems.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Size</label>
-                            <select
-                              value={maf.size}
-                              onChange={(e) =>
-                                updateToothTreatmentCanalMAF(activePlan.id, canal, 'size', e.target.value)
-                              }
-                              className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select...</option>
-                              {mafSizes.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Taper</label>
-                            <select
-                              value={maf.taper}
-                              onChange={(e) =>
-                                updateToothTreatmentCanalMAF(activePlan.id, canal, 'taper', e.target.value)
-                              }
-                              className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select...</option>
-                              {mafTapers.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
+                        {(() => {
+                          const selectedSystems = Array.isArray(maf.fileSystem) ? maf.fileSystem : (maf.fileSystem ? [maf.fileSystem as unknown as string] : []);
+                          const availableSizes = [...new Set(selectedSystems.flatMap(s => fileSystemProfiles[s]?.sizes ?? []))];
+                          const availableTapers = [...new Set(selectedSystems.flatMap(s => fileSystemProfiles[s]?.tapers ?? []))];
+                          const showTaper = availableTapers.length > 1;
+                          const isHandFileMode = selectedSystems.some(s => s === 'k_files' || s === 'h_files');
+                          const selectedSizes: string[] = Array.isArray(maf.sizes) ? maf.sizes : [];
 
-                        {/* Obturation */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                          <div>
-                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
-                              Obturation Technique
-                            </label>
-                            <select
-                              value={maf.obturationTechnique}
-                              onChange={(e) =>
-                                updateToothTreatmentCanalMAF(
-                                  activePlan.id,
-                                  canal,
-                                  'obturationTechnique',
-                                  e.target.value
-                                )
-                              }
-                              className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select...</option>
-                              {obturationTechniques.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
+                          const handleSystemToggle = (sysValue: string) => {
+                            const next = selectedSystems.includes(sysValue)
+                              ? selectedSystems.filter(s => s !== sysValue)
+                              : [...selectedSystems, sysValue];
+                            const nextSizes = [...new Set(next.flatMap(s => fileSystemProfiles[s]?.sizes ?? []))];
+                            const nextTapers = [...new Set(next.flatMap(s => fileSystemProfiles[s]?.tapers ?? []))];
+                            const nextIsHandFile = next.some(s => s === 'k_files' || s === 'h_files');
+                            updateToothTreatmentCanalMAF(activePlan.id, canal, 'fileSystem', next);
+                            // Clear single size if no longer valid
+                            if (maf.size && !nextSizes.includes(maf.size)) {
+                              updateToothTreatmentCanalMAF(activePlan.id, canal, 'size', '');
+                            }
+                            // Clear multi-sizes if switching away from hand files
+                            if (!nextIsHandFile && selectedSizes.length > 0) {
+                              updateToothTreatmentCanalMAF(activePlan.id, canal, 'sizes', []);
+                            }
+                            if (next.length === 0) {
+                              updateToothTreatmentCanalMAF(activePlan.id, canal, 'taper', '');
+                            } else if (nextTapers.length === 1) {
+                              updateToothTreatmentCanalMAF(activePlan.id, canal, 'taper', nextTapers[0]);
+                            } else if (maf.taper && !nextTapers.includes(maf.taper)) {
+                              updateToothTreatmentCanalMAF(activePlan.id, canal, 'taper', '');
+                            }
+                          };
+
+                          const handleSizeToggle = (sizeVal: string) => {
+                            if (isHandFileMode) {
+                              const next = selectedSizes.includes(sizeVal)
+                                ? selectedSizes.filter(s => s !== sizeVal)
+                                : [...selectedSizes, sizeVal];
+                              updateToothTreatmentCanalMAF(activePlan.id, canal, 'sizes', next);
+                            } else {
+                              updateToothTreatmentCanalMAF(activePlan.id, canal, 'size', maf.size === sizeVal ? '' : sizeVal);
+                            }
+                          };
+
+                          return (
+                            <div className="mb-3">
+                              {/* File System pill toggles */}
+                              {(() => {
+                                const systemColors: Record<string, { base: string; active: string }> = {
+                                  edge_x7:           { base: 'bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-300 hover:bg-lime-200 dark:hover:bg-lime-800/40',                                     active: 'bg-lime-600 text-white ring-2 ring-lime-400 ring-offset-1 dark:bg-lime-700 dark:ring-lime-500' },
+                                  vortex_blue:       { base: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/40',                                     active: 'bg-blue-600 text-white ring-2 ring-blue-400 ring-offset-1 dark:bg-blue-700 dark:ring-blue-500' },
+                                  protaper_gold:     { base: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800/40',                               active: 'bg-amber-500 text-white ring-2 ring-amber-300 ring-offset-1 dark:bg-amber-600 dark:ring-amber-400' },
+                                  protaper_ultimate: { base: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-800/40',                                     active: 'bg-teal-600 text-white ring-2 ring-teal-400 ring-offset-1 dark:bg-teal-700 dark:ring-teal-500' },
+                                  waveone_gold:      { base: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-800/40',                         active: 'bg-orange-500 text-white ring-2 ring-orange-300 ring-offset-1 dark:bg-orange-600 dark:ring-orange-400' },
+                                  reciproc_blue:     { base: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800/40',                                           active: 'bg-sky-600 text-white ring-2 ring-sky-400 ring-offset-1 dark:bg-sky-700 dark:ring-sky-500' },
+                                  xp_endo_shaper:    { base: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800/40',                   active: 'bg-emerald-600 text-white ring-2 ring-emerald-400 ring-offset-1 dark:bg-emerald-700 dark:ring-emerald-500' },
+                                  xp_endo_finisher:  { base: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800/40',                         active: 'bg-indigo-600 text-white ring-2 ring-indigo-400 ring-offset-1 dark:bg-indigo-700 dark:ring-indigo-500' },
+                                  k_files:           { base: 'bg-stone-100 text-stone-700 dark:bg-stone-700/40 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700/60',                               active: 'bg-stone-500 text-white ring-2 ring-stone-400 ring-offset-1 dark:bg-stone-600 dark:ring-stone-400' },
+                                  h_files:           { base: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300 hover:bg-rose-200 dark:hover:bg-rose-800/40',                                     active: 'bg-rose-500 text-white ring-2 ring-rose-300 ring-offset-1 dark:bg-rose-600 dark:ring-rose-400' },
+                                };
+                                return (
+                                  <>
+                                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">File System</label>
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                      {instrumentationSystems.map(sys => {
+                                        const isSelected = selectedSystems.includes(sys.value);
+                                        const colors = systemColors[sys.value] ?? { base: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200', active: 'bg-gray-500 text-white ring-2 ring-gray-400 ring-offset-1' };
+                                        return (
+                                          <button
+                                            key={sys.value}
+                                            type="button"
+                                            onClick={() => handleSystemToggle(sys.value)}
+                                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${isSelected ? colors.active : colors.base}`}
+                                          >
+                                            {sys.label}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                );
+                              })()}
+
+                              {/* Size / Taper selectors */}
+                              {selectedSystems.length === 1 ? (
+                                // Single system: flat size + taper rows (existing behaviour)
+                                <>
+                                  {availableSizes.length > 0 && (
+                                    <div className="mb-2">
+                                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                        Size{isHandFileMode ? ' (select all used)' : ''}
+                                      </label>
+                                      <div className="flex flex-wrap gap-1">
+                                        {availableSizes.map(sizeVal => {
+                                          const opt = mafSizes.find(s => s.value === sizeVal);
+                                          const label = opt ? opt.label : sizeVal;
+                                          const isSelected = isHandFileMode ? selectedSizes.includes(sizeVal) : maf.size === sizeVal;
+                                          return (
+                                            <button key={sizeVal} type="button" onClick={() => handleSizeToggle(sizeVal)}
+                                              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                                              {label}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {showTaper && (
+                                    <div className="mb-1">
+                                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Taper</label>
+                                      <div className="flex flex-wrap gap-1">
+                                        {availableTapers.map(taperVal => {
+                                          const opt = mafTapers.find(t => t.value === taperVal);
+                                          const label = opt ? opt.label : taperVal;
+                                          const isSelected = maf.taper === taperVal;
+                                          return (
+                                            <button key={taperVal} type="button"
+                                              onClick={() => updateToothTreatmentCanalMAF(activePlan.id, canal, 'taper', isSelected ? '' : taperVal)}
+                                              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                                              {label}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              ) : selectedSystems.length > 1 ? (
+                                // Multiple systems: per-system size + taper rows
+                                <div className="space-y-2">
+                                  {selectedSystems.map(sysKey => {
+                                    const profile = fileSystemProfiles[sysKey];
+                                    if (!profile) return null;
+                                    const sysLabel = instrumentationSystems.find(s => s.value === sysKey)?.label ?? sysKey;
+                                    const sysSizes = profile.sizes;
+                                    const sysTapers = profile.tapers;
+                                    const isHand = sysKey === 'k_files' || sysKey === 'h_files';
+                                    const currentSize = maf.systemSizes?.[sysKey] ?? '';
+                                    const currentTaper = maf.systemTapers?.[sysKey] ?? '';
+
+                                    if (sysSizes.length === 0) return null;
+
+                                    return (
+                                      <div key={sysKey}>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                          {sysLabel}{isHand ? ' (select all used)' : ''}
+                                        </label>
+                                        <div className="flex flex-wrap gap-1 mb-1">
+                                          {sysSizes.map(sizeVal => {
+                                            const opt = mafSizes.find(s => s.value === sizeVal);
+                                            const label = opt ? opt.label : sizeVal;
+                                            const isSelected = isHand ? selectedSizes.includes(sizeVal) : currentSize === sizeVal;
+                                            return (
+                                              <button key={sizeVal} type="button"
+                                                onClick={() => {
+                                                  if (isHand) {
+                                                    handleSizeToggle(sizeVal);
+                                                  } else {
+                                                    const nextSize = isSelected ? '' : sizeVal;
+                                                    updateToothTreatmentSystemSize(activePlan.id, canal, sysKey, nextSize, currentTaper);
+                                                  }
+                                                }}
+                                                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                                                {label}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                        {sysTapers.length > 1 && (
+                                          <div className="flex flex-wrap gap-1">
+                                            {sysTapers.map(taperVal => {
+                                              const opt = mafTapers.find(t => t.value === taperVal);
+                                              const label = opt ? opt.label : taperVal;
+                                              const isSelected = currentTaper === taperVal;
+                                              return (
+                                                <button key={taperVal} type="button"
+                                                  onClick={() => updateToothTreatmentSystemSize(activePlan.id, canal, sysKey, currentSize, isSelected ? '' : taperVal)}
+                                                  className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                                                  {label}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Obturation — hidden when no obturation planned */}
+                        {activePlan.treatmentOutcome !== 'open_medicate' &&
+                         activePlan.treatmentOutcome !== 'pulp_extirpation' &&
+                         activePlan.treatmentOutcome !== 'cleaning_shaping' && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Obturation Technique
+                              </label>
+                              <select
+                                value={maf.obturationTechnique}
+                                onChange={(e) =>
+                                  updateToothTreatmentCanalMAF(
+                                    activePlan.id,
+                                    canal,
+                                    'obturationTechnique',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Select...</option>
+                                {obturationTechniques.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Material</label>
+                              <select
+                                value={maf.obturationMaterial}
+                                onChange={(e) =>
+                                  updateToothTreatmentCanalMAF(
+                                    activePlan.id,
+                                    canal,
+                                    'obturationMaterial',
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Select...</option>
+                                {obturationMaterials.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Sealer</label>
+                              <select
+                                value={maf.obturationSealer}
+                                onChange={(e) =>
+                                  updateToothTreatmentCanalMAF(activePlan.id, canal, 'obturationSealer', e.target.value)
+                                }
+                                className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Select...</option>
+                                {obturationSealers.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Material</label>
-                            <select
-                              value={maf.obturationMaterial}
-                              onChange={(e) =>
-                                updateToothTreatmentCanalMAF(
-                                  activePlan.id,
-                                  canal,
-                                  'obturationMaterial',
-                                  e.target.value
-                                )
-                              }
-                              className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select...</option>
-                              {obturationMaterials.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Sealer</label>
-                            <select
-                              value={maf.obturationSealer}
-                              onChange={(e) =>
-                                updateToothTreatmentCanalMAF(activePlan.id, canal, 'obturationSealer', e.target.value)
-                              }
-                              className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select...</option>
-                              {obturationSealers.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     );
                   })}
@@ -1048,17 +1327,16 @@ export function PlanSection() {
             )}
 
           </div>
-        )}
+        </div>
+      )}
 
-        {noteData.toothTreatmentPlans.length === 0 && (
-          <div className="p-6 text-center text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-            <p className="mb-2">No teeth selected for treatment</p>
-            <p className="text-sm">
-              Use "Sync from Assessment" to import teeth or "Add Tooth" to add manually
-            </p>
-          </div>
-        )}
-      </div>
+      {/* === PROCEDURAL STEPS (surgical/special procedures) === */}
+      <ProceduralStepsSection
+        treatmentOptionsOffered={noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? [])}
+        proceduralSteps={noteData.proceduralSteps}
+        toothTreatmentPlans={noteData.toothTreatmentPlans}
+        onChange={(steps) => updateField('proceduralSteps', steps)}
+      />
 
       {/* === GLOBAL SETTINGS - BOTTOM === */}
 

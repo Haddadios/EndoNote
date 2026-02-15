@@ -1,5 +1,21 @@
 import type { NoteData } from '../types';
 import {
+  flapDesigns,
+  retroMaterials,
+  graftOptions,
+  hemostaticAgents,
+  sutureMaterials,
+  antibioticPastes,
+  regenScaffolds,
+  storageMedia,
+  pulpCapMaterials,
+  apexPlugMaterials,
+  rootDevStages,
+  splintTypes,
+  replantRctPlan,
+  pulpotomyLevels,
+} from '../data';
+import {
   chiefComplaints,
   painCharacteristics,
   painDurations,
@@ -13,13 +29,13 @@ import {
   swellingOptions,
   radiographicFindings,
   radiographicFindingsGroups,
-  treatmentTypes,
   prognosisOptions,
   treatmentOptionsOffered,
   anesthesiaTypes,
   anesthesiaLocations,
   isolationMethods,
   workingLengthMethods,
+  coronalFlareOptions,
   instrumentationSystems,
   mafSizes,
   mafTapers,
@@ -75,7 +91,120 @@ function joinList(items: string[]): string {
 // Chief complaints that use "presenting for" instead of "presents with"
 const presentingForComplaints = ['referred', 'retreatment', 'continued_treatment', 'recall'];
 
-export function generateSOAPNote(data: NoteData): string {
+function getFileSystems(systems: string[]): string {
+  return systems.map((s) => getLabel(instrumentationSystems, s)).join(' + ');
+}
+
+function getLabelSafe(options: { value: string; label: string }[], value: string): string {
+  return options.find((o) => o.value === value)?.label || value;
+}
+
+function renderProceduralSteps(data: NoteData): string[] {
+  const lines: string[] = [];
+  const steps = data.proceduralSteps;
+  if (!steps) return lines;
+
+  const offered = (data.toothTreatmentPlans ?? []).flatMap((p) => p.treatmentPerformed ?? []);
+
+  if (offered.includes('apical_microsurgery') && steps.apical_microsurgery) {
+    const s = steps.apical_microsurgery;
+    const parts: string[] = [];
+    if (s.flapDesign) parts.push(`Surgical approach: ${getLabelSafe(flapDesigns, s.flapDesign)}.`);
+    if (s.resectionMm || s.resectionAngle) {
+      parts.push(`Root end resected${s.resectionMm ? ` ${s.resectionMm}mm` : ''}${s.resectionAngle ? ` at ${s.resectionAngle}` : ''}.`);
+    }
+    if (s.retroMaterial) parts.push(`${getLabelSafe(retroMaterials, s.retroMaterial)} placed as retrograde filling.`);
+    if (s.graft && s.graft !== 'none') parts.push(`Graft: ${getLabelSafe(graftOptions, s.graft)}.`);
+    if (s.hemostaticAgent) parts.push(`Hemostasis achieved using ${getLabelSafe(hemostaticAgents, s.hemostaticAgent)}.`);
+    if (s.sutureCount || s.sutureMaterial) {
+      parts.push(`Wound closed with${s.sutureCount ? ` ${s.sutureCount}` : ''}${s.sutureMaterial ? ` ${getLabelSafe(sutureMaterials, s.sutureMaterial)}` : ''} sutures.`);
+    }
+    if (s.biopsySent) parts.push('Biopsy submitted for histopathological analysis.');
+    if (s.surgicalNotes) parts.push(s.surgicalNotes);
+    if (parts.length > 0) {
+      lines.push('');
+      lines.push('Surgical Procedure:');
+      parts.forEach((p) => lines.push(`  ${p}`));
+    }
+  }
+
+  if (offered.includes('hemisection') && steps.hemisection) {
+    const s = steps.hemisection;
+    lines.push('');
+    lines.push('Hemisection:');
+    if (s.rootsRetained.length > 0) lines.push(`  Roots retained: ${s.rootsRetained.join(', ')}.`);
+    if (s.rootsResected.length > 0) lines.push(`  Roots resected: ${s.rootsResected.join(', ')}.`);
+    if (s.crownRemovedFirst) lines.push('  Crown removed prior to hemisection.');
+    if (s.hemisectionNotes) lines.push(`  ${s.hemisectionNotes}`);
+  }
+
+  if (offered.includes('root_resection') && steps.root_resection) {
+    const s = steps.root_resection;
+    lines.push('');
+    lines.push('Root Resection:');
+    if (s.rootsResected.length > 0) lines.push(`  Roots resected: ${s.rootsResected.join(', ')}${s.resectionMm ? ` (${s.resectionMm}mm)` : ''}.`);
+    if (s.resectionNotes) lines.push(`  ${s.resectionNotes}`);
+  }
+
+  if (offered.includes('apexification') && steps.apexification) {
+    const s = steps.apexification;
+    lines.push('');
+    lines.push('Apexification:');
+    const mat = s.apicalPlugMaterial ? getLabelSafe(apexPlugMaterials, s.apicalPlugMaterial) : '';
+    if (mat) lines.push(`  ${mat} apical plug placed${s.plugThicknessMm ? ` (${s.plugThicknessMm}mm thick)` : ''} at working length.`);
+    if (s.apicalStopSize) lines.push(`  Apical stop size: ${s.apicalStopSize}.`);
+    if (s.apexificationNotes) lines.push(`  ${s.apexificationNotes}`);
+  }
+
+  if (offered.includes('apexogenesis') && steps.apexogenesis) {
+    const s = steps.apexogenesis;
+    lines.push('');
+    lines.push('Apexogenesis:');
+    const level = s.pulpotomyLevel ? getLabelSafe(pulpotomyLevels, s.pulpotomyLevel) : '';
+    const mat = s.pulpCapMaterial ? getLabelSafe(pulpCapMaterials, s.pulpCapMaterial) : '';
+    if (level || mat) lines.push(`  ${level ? level + ' performed' : ''}${mat ? (level ? ', ' : '') + mat + ' placed' : ''}.`);
+    if (s.apexogenesisNotes) lines.push(`  ${s.apexogenesisNotes}`);
+  }
+
+  if (offered.includes('regenerative_endo') && steps.regenerative_endo) {
+    const s = steps.regenerative_endo;
+    lines.push('');
+    lines.push('Regenerative Endodontics:');
+    const scaffold = s.scaffoldType ? getLabelSafe(regenScaffolds, s.scaffoldType) : '';
+    if (scaffold) lines.push(`  ${scaffold} scaffold used.`);
+    if (s.antibioticPaste) lines.push(`  Antibiotic paste: ${getLabelSafe(antibioticPastes, s.antibioticPaste)}.`);
+    lines.push(`  Bioceramic plug ${s.bioceramicPlugPlaced ? 'placed' : 'not placed'}.`);
+    if (s.regenNotes) lines.push(`  ${s.regenNotes}`);
+  }
+
+  if (offered.includes('intentional_replantation') && steps.intentional_replantation) {
+    const s = steps.intentional_replantation;
+    lines.push('');
+    lines.push('Intentional Replantation:');
+    if (s.extraOralTimeMins) lines.push(`  Extra-oral time: ${s.extraOralTimeMins} min.`);
+    if (s.storageMedia) lines.push(`  Stored in ${getLabelSafe(storageMedia, s.storageMedia)}.`);
+    if (s.retroPrepDone) {
+      lines.push(`  Retrograde preparation performed${s.retroMaterial ? ` — ${getLabelSafe(retroMaterials, s.retroMaterial)} placed` : ''}.`);
+    }
+    if (s.splintType) lines.push(`  Splinted with ${getLabelSafe(splintTypes, s.splintType)}${s.splintDurationWeeks ? ` for ${s.splintDurationWeeks} weeks` : ''}.`);
+    if (s.replantationNotes) lines.push(`  ${s.replantationNotes}`);
+  }
+
+  if (offered.includes('autotransplantation') && steps.autotransplantation) {
+    const s = steps.autotransplantation;
+    lines.push('');
+    lines.push('Autotransplantation:');
+    if (s.donorTooth || s.recipientSite) lines.push(`  Tooth transplanted from ${s.donorTooth || '—'} to ${s.recipientSite || '—'}.`);
+    if (s.rootDevStage) lines.push(`  Root development: ${getLabelSafe(rootDevStages, s.rootDevStage)}.`);
+    if (s.rctPlan) lines.push(`  RCT plan: ${getLabelSafe(replantRctPlan, s.rctPlan)}.`);
+    if (s.splintType) lines.push(`  Splinted with ${getLabelSafe(splintTypes, s.splintType)}${s.splintDurationWeeks ? ` for ${s.splintDurationWeeks} weeks` : ''}.`);
+    if (s.autotransplantNotes) lines.push(`  ${s.autotransplantNotes}`);
+  }
+
+  return lines;
+}
+
+export function generateSOAPNote(data: NoteData, carpuleVolumeMl: number = 1.8): string {
   const lines: string[] = [];
   const isFirstVisit = data.visitType === 'first_visit';
 
@@ -377,11 +506,12 @@ export function generateSOAPNote(data: NoteData): string {
         if (tooth.prognosis) {
           toothLine.push(`Prognosis: ${getLabel(prognosisOptions, tooth.prognosis)}`);
         }
-        if (tooth.recommendedTreatment) {
-          toothLine.push(`Treatment: ${getLabel(treatmentTypes, tooth.recommendedTreatment)}`);
-        }
 
         lines.push(toothLine.join(' | '));
+
+        if ((tooth.treatmentOptionsOffered ?? []).length > 0) {
+          lines.push(`  Treatment options offered: ${joinList(getLabels(treatmentOptionsOffered, tooth.treatmentOptionsOffered))}`);
+        }
       }
     });
   } else {
@@ -400,23 +530,9 @@ export function generateSOAPNote(data: NoteData): string {
   // === PLAN ===
   lines.push('PLAN:');
 
-  // Treatment Options Offered
-  if (data.treatmentOptionsOffered.length > 0) {
-    const options = data.treatmentOptionsOffered.map((opt) => {
-      if (opt === 'other' && data.treatmentOptionsOfferedOther) {
-        return data.treatmentOptionsOfferedOther;
-      }
-      return getLabel(treatmentOptionsOffered, opt);
-    });
-    lines.push(`Treatment options offered: ${joinList(options)}`);
-  }
-
   // Treatment Comments
   if (data.treatmentComments && data.treatmentComments.trim()) {
     lines.push(`Treatment notes: ${data.treatmentComments.trim()}`);
-  }
-
-  if (data.treatmentOptionsOffered.length > 0 || data.treatmentComments) {
     lines.push('');
   }
 
@@ -439,7 +555,9 @@ export function generateSOAPNote(data: NoteData): string {
   Object.entries(data.anesthesiaAmounts).forEach(([key, amount]) => {
     if (amount && parseFloat(amount) > 0) {
       const typeLabel = anesthesiaTypes.find(t => t.value === key)?.label || key;
-      anesthesiaParts.push(`${amount} carpule(s) ${typeLabel}`);
+      const rawMl = parseFloat(amount) * carpuleVolumeMl;
+      const mlDisplay = Number.isInteger(rawMl) ? `${rawMl}` : rawMl.toFixed(1);
+      anesthesiaParts.push(`${amount} carpule(s) (${mlDisplay} mL) ${typeLabel}`);
       usedAnestheticKeys.push(key);
     }
   });
@@ -505,6 +623,11 @@ export function generateSOAPNote(data: NoteData): string {
       if (plan.toothNumber) {
         lines.push(`Tooth #${plan.toothNumber}:`);
 
+        // Treatment Performed
+        if ((plan.treatmentPerformed ?? []).length > 0) {
+          lines.push(`  Treatment performed: ${joinList(getLabels(treatmentOptionsOffered, plan.treatmentPerformed))}`);
+        }
+
         // Canal configuration
         if (plan.canalConfiguration.length > 0) {
           const configs = getLabels(canalConfigurations, plan.canalConfiguration);
@@ -530,8 +653,21 @@ export function generateSOAPNote(data: NoteData): string {
           lines.push(`  Working length: ${joinList(getLabels(workingLengthMethods, plan.workingLengthMethod))}`);
         }
 
+        // Coronal flare
+        if ((plan.coronalFlare ?? []).length > 0) {
+          const flareLabels = getLabels(coronalFlareOptions, plan.coronalFlare ?? []);
+          const flareOther = plan.coronalFlareOther ?? '';
+          const flareParts = flareLabels.filter((l) => l !== 'Other');
+          if (flareOther) flareParts.push(flareOther);
+          if (flareParts.length > 0) {
+            lines.push(`  Coronal flare: ${joinList(flareParts)}`);
+          }
+        }
+
         // Per-canal details
-        if (plan.canalMAFs.length > 0) {
+        if (plan.treatmentOutcome === 'pulp_extirpation') {
+          lines.push(`  Pulp extirpated and intracanal medicament placed.`);
+        } else if (plan.canalMAFs.length > 0) {
           // Get all valid canals from selected configurations
           const validCanals = new Set<string>();
           plan.canalConfiguration.forEach((config) => {
@@ -548,12 +684,13 @@ export function generateSOAPNote(data: NoteData): string {
           });
 
           const relevantCanalMAFs = plan.canalMAFs.filter(
-            (m) => (m.workingLength || m.referencePoint || m.fileSystem || m.size || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal)
+            (m) => (m.workingLength || m.referencePoint || m.fileSystem.length > 0 || m.size || (m.sizes && m.sizes.length > 0) || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal)
           );
 
           if (relevantCanalMAFs.length > 0) {
             // Detect shared properties across all canals (size/taper always shown per-canal)
-            const sharedFileSystem = allSameValue(relevantCanalMAFs, (m) => m.fileSystem);
+            const sharedFileSystemKey = allSameValue(relevantCanalMAFs, (m) => m.fileSystem.length > 0 ? m.fileSystem.join('|') : undefined);
+            const sharedFileSystems = sharedFileSystemKey ? sharedFileSystemKey.split('|') : undefined;
             const sharedObtTechnique = allSameValue(relevantCanalMAFs, (m) => m.obturationTechnique);
             const sharedObtMaterial = allSameValue(relevantCanalMAFs, (m) => m.obturationMaterial);
             const sharedObtSealer = allSameValue(relevantCanalMAFs, (m) => m.obturationSealer);
@@ -562,7 +699,7 @@ export function generateSOAPNote(data: NoteData): string {
 
             // Show shared summary line if any properties are common across all canals
             const sharedInstrParts: string[] = [];
-            if (sharedFileSystem) sharedInstrParts.push(getLabel(instrumentationSystems, sharedFileSystem));
+            if (sharedFileSystems) sharedInstrParts.push(getFileSystems(sharedFileSystems));
             const sharedObtParts: string[] = [];
             if (sharedObtTechnique) sharedObtParts.push(getLabel(obturationTechniques, sharedObtTechnique));
             if (sharedObtMaterial) sharedObtParts.push(getLabel(obturationMaterials, sharedObtMaterial));
@@ -574,7 +711,10 @@ export function generateSOAPNote(data: NoteData): string {
               lines.push(`  All canals: ${sharedLineParts.join(' | ')}`);
             }
 
-            relevantCanalMAFs.forEach((m) => {
+            const outcome = plan.treatmentOutcome;
+            const hideObturation = outcome === 'open_medicate' || outcome === 'cleaning_shaping';
+
+          relevantCanalMAFs.forEach((m) => {
               const parts: string[] = [];
 
               const patentStatus = m.patent ? 'Patent' : 'Not Patent';
@@ -588,26 +728,57 @@ export function generateSOAPNote(data: NoteData): string {
 
               // Show per-canal instrumentation: skip fileSystem if shared, always show size/taper
               const instrParts: string[] = [];
-              if (m.fileSystem && m.fileSystem !== sharedFileSystem) instrParts.push(getLabel(instrumentationSystems, m.fileSystem));
-              if (m.size) instrParts.push(getLabel(mafSizes, m.size));
-              if (m.taper) instrParts.push(getLabel(mafTapers, m.taper));
+              const mFileSystemKey = m.fileSystem.length > 0 ? m.fileSystem.join('|') : undefined;
+              if (m.fileSystem.length > 0 && mFileSystemKey !== sharedFileSystemKey) instrParts.push(getFileSystems(m.fileSystem));
+              const hasPerSystemSizes = m.systemSizes && Object.keys(m.systemSizes).some(k => m.systemSizes[k]);
+              if (hasPerSystemSizes && m.fileSystem.length > 1) {
+                // Per-system sizes: e.g. "ProTaper Gold F3 + Vortex Blue #25 0.04"
+                const perSysParts = m.fileSystem.map(sysKey => {
+                  const sysLabel = getLabel(instrumentationSystems, sysKey);
+                  const sz = m.systemSizes[sysKey];
+                  const tp = m.systemTapers?.[sysKey];
+                  const parts: string[] = [sysLabel];
+                  if (sz) parts.push(getLabel(mafSizes, sz));
+                  if (tp) parts.push(getLabel(mafTapers, tp));
+                  return parts.join(' ');
+                });
+                instrParts.push(perSysParts.join(' + '));
+              } else if (m.sizes && m.sizes.length > 0) {
+                instrParts.push(m.sizes.map(s => getLabel(mafSizes, s)).join(', '));
+              } else if (m.size) {
+                instrParts.push(getLabel(mafSizes, m.size));
+              }
+              if (!hasPerSystemSizes && m.taper) instrParts.push(getLabel(mafTapers, m.taper));
               if (instrParts.length > 0) parts.push(`Prep: ${instrParts.join(' ')}`);
 
-              // Only show obturation properties that differ from shared
-              const obtParts: string[] = [];
-              if (m.obturationTechnique && m.obturationTechnique !== sharedObtTechnique) obtParts.push(getLabel(obturationTechniques, m.obturationTechnique));
-              if (m.obturationMaterial && m.obturationMaterial !== sharedObtMaterial) obtParts.push(getLabel(obturationMaterials, m.obturationMaterial));
-              if (m.obturationSealer && m.obturationSealer !== sharedObtSealer) obtParts.push(`Sealer: ${getLabel(obturationSealers, m.obturationSealer)}`);
-              if (obtParts.length > 0) parts.push(`Obt: ${obtParts.join(' with ')}`);
+              // Only show obturation when outcome includes obturation
+              if (!hideObturation) {
+                const obtParts: string[] = [];
+                if (m.obturationTechnique && m.obturationTechnique !== sharedObtTechnique) obtParts.push(getLabel(obturationTechniques, m.obturationTechnique));
+                if (m.obturationMaterial && m.obturationMaterial !== sharedObtMaterial) obtParts.push(getLabel(obturationMaterials, m.obturationMaterial));
+                if (m.obturationSealer && m.obturationSealer !== sharedObtSealer) obtParts.push(`Sealer: ${getLabel(obturationSealers, m.obturationSealer)}`);
+                if (obtParts.length > 0) parts.push(`Obt: ${obtParts.join(' with ')}`);
+              }
 
               lines.push(`    ${m.canal} - ${parts.join('; ')}`);
             });
+
+          if (outcome === 'cleaning_shaping') {
+            lines.push(`  Intracanal medicament placed.`);
+          } else if (outcome === 'open_medicate') {
+            lines.push(`  Tooth left open — intracanal medicament to be placed.`);
+          }
           }
         }
 
         lines.push('');
       }
     });
+
+    // Procedural steps (surgical/special procedures)
+    const proceduralLines = renderProceduralSteps(data);
+    proceduralLines.forEach((l) => lines.push(l));
+
   } else {
     // === LEGACY SINGLE-TOOTH FORMAT (for backward compatibility) ===
     // Canal configuration
@@ -638,7 +809,7 @@ export function generateSOAPNote(data: NoteData): string {
     lines.push(`Working length determined using ${joinList(getLabels(workingLengthMethods, data.workingLengthMethod))}`);
   }
 
-  // Per-canal Instrumentation & Obturation (only show canals that match selected configurations)
+  // Per-canal Instrumentation & Obturation (legacy path has no coronal flare field) (only show canals that match selected configurations)
   if (data.canalMAFs.length > 0 && data.canalConfiguration.length > 0) {
     // Get all valid canals from selected configurations
     const validCanals = new Set<string>();
@@ -659,12 +830,13 @@ export function generateSOAPNote(data: NoteData): string {
     });
 
     const relevantCanalMAFs = data.canalMAFs.filter(
-      (m) => (m.workingLength || m.referencePoint || m.fileSystem || m.size || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal)
+      (m) => (m.workingLength || m.referencePoint || m.fileSystem.length > 0 || m.size || (m.sizes && m.sizes.length > 0) || m.taper || m.obturationTechnique || m.obturationMaterial || m.obturationSealer) && validCanals.has(m.canal)
     );
 
     if (relevantCanalMAFs.length > 0) {
       // Detect shared properties across all canals (size/taper always shown per-canal)
-      const sharedFileSystem = allSameValue(relevantCanalMAFs, (m) => m.fileSystem);
+      const sharedFileSystemKey = allSameValue(relevantCanalMAFs, (m) => m.fileSystem.length > 0 ? m.fileSystem.join('|') : undefined);
+      const sharedFileSystems = sharedFileSystemKey ? sharedFileSystemKey.split('|') : undefined;
       const sharedObtTechnique = allSameValue(relevantCanalMAFs, (m) => m.obturationTechnique);
       const sharedObtMaterial = allSameValue(relevantCanalMAFs, (m) => m.obturationMaterial);
       const sharedObtSealer = allSameValue(relevantCanalMAFs, (m) => m.obturationSealer);
@@ -674,7 +846,7 @@ export function generateSOAPNote(data: NoteData): string {
 
       // Show shared summary line if any properties are common across all canals
       const sharedInstrParts: string[] = [];
-      if (sharedFileSystem) sharedInstrParts.push(getLabel(instrumentationSystems, sharedFileSystem));
+      if (sharedFileSystems) sharedInstrParts.push(getFileSystems(sharedFileSystems));
       const sharedObtParts: string[] = [];
       if (sharedObtTechnique) sharedObtParts.push(getLabel(obturationTechniques, sharedObtTechnique));
       if (sharedObtMaterial) sharedObtParts.push(getLabel(obturationMaterials, sharedObtMaterial));
@@ -700,7 +872,8 @@ export function generateSOAPNote(data: NoteData): string {
 
         // Show per-canal instrumentation: skip fileSystem if shared, always show size/taper
         const instrParts: string[] = [];
-        if (m.fileSystem && m.fileSystem !== sharedFileSystem) instrParts.push(getLabel(instrumentationSystems, m.fileSystem));
+        const mFileSystemKey = m.fileSystem.length > 0 ? m.fileSystem.join('|') : undefined;
+        if (m.fileSystem.length > 0 && mFileSystemKey !== sharedFileSystemKey) instrParts.push(getFileSystems(m.fileSystem));
         if (m.size) instrParts.push(getLabel(mafSizes, m.size));
         if (m.taper) instrParts.push(getLabel(mafTapers, m.taper));
         if (instrParts.length > 0) parts.push(`Prep: ${instrParts.join(' ')}`);

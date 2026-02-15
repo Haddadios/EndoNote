@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNote } from '../../context/NoteContext';
-import { Dropdown, Odontogram } from '../common';
+import { CheckboxGroup, Dropdown, Odontogram } from '../common';
 import {
   universalTeeth,
   fdiTeeth,
   pulpalDiagnoses,
   periapicalDiagnoses,
   prognosisOptions,
-  treatmentTypes,
+  treatmentOptionsOffered,
   getToothType,
 } from '../../data';
 import type { ToothDiagnosis } from '../../types';
@@ -16,7 +16,7 @@ interface ToothDiagnosisEntryProps {
   diagnosis: ToothDiagnosis;
   index: number;
   teethOptions: typeof universalTeeth;
-  onUpdate: (id: string, field: keyof ToothDiagnosis, value: string) => void;
+  onUpdate: (id: string, field: keyof ToothDiagnosis, value: string | string[]) => void;
   onRemove: (id: string) => void;
   canRemove: boolean;
 }
@@ -77,12 +77,12 @@ function ToothDiagnosisEntry({
         />
 
         <div className="md:col-span-2">
-          <Dropdown
-            label="Recommended Treatment"
-            value={diagnosis.recommendedTreatment}
-            options={treatmentTypes}
-            onChange={(value) => onUpdate(diagnosis.id, 'recommendedTreatment', value)}
-            placeholder="Select treatment..."
+          <CheckboxGroup
+            label="Treatment Options Offered"
+            options={treatmentOptionsOffered}
+            selectedValues={diagnosis.treatmentOptionsOffered ?? []}
+            onChange={(values) => onUpdate(diagnosis.id, 'treatmentOptionsOffered', values)}
+            columns={2}
           />
         </div>
       </div>
@@ -140,7 +140,7 @@ export function AssessmentSection() {
     pulpalDiagnosis: '',
     periapicalDiagnosis: '',
     prognosis: '',
-    recommendedTreatment: '',
+    treatmentOptionsOffered: [],
   });
 
   const handleClearSection = () => {

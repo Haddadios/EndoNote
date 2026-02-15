@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNote } from '../../context/NoteContext';
-import type { Template, TemplateScope, VisitType } from '../../types';
+import type { Template, TemplateScope, VisitType, ToothType } from '../../types';
 import { buildTemplateData, templateScopeLabels } from '../../utils/templateUtils';
+import { treatmentOptionsOffered as treatmentOptionsOfferedData } from '../../data';
 
 export function TemplateDropdown() {
   const { noteData, templates, saveTemplate, loadTemplate, deleteTemplate, renameTemplate } = useNote();
@@ -10,6 +11,8 @@ export function TemplateDropdown() {
   const [templateName, setTemplateName] = useState('');
   const [selectedScopes, setSelectedScopes] = useState<TemplateScope[]>(['all']);
   const [templateVisitType, setTemplateVisitType] = useState<VisitType | 'any'>(noteData.visitType);
+  const [templateToothType, setTemplateToothType] = useState<ToothType | 'any'>('any');
+  const [templateProcedureTypes, setTemplateProcedureTypes] = useState<string[] | 'any'>('any');
   const [pendingOverwrite, setPendingOverwrite] = useState<Template | null>(null);
   const [showAllTemplates, setShowAllTemplates] = useState(false);
   const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
@@ -35,6 +38,8 @@ export function TemplateDropdown() {
       data: templateData,
       scope: selectedScopes,
       visitType: templateVisitType,
+      toothType: templateToothType,
+      procedureTypes: templateProcedureTypes,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
     };
 
@@ -42,6 +47,8 @@ export function TemplateDropdown() {
     setTemplateName('');
     setSelectedScopes(['all']);
     setTemplateVisitType(noteData.visitType);
+    setTemplateToothType('any');
+    setTemplateProcedureTypes('any');
     setPendingOverwrite(null);
     setShowSaveDialog(false);
   };
@@ -62,10 +69,18 @@ export function TemplateDropdown() {
 
   const visibleTemplates = useMemo(() => {
     if (showAllTemplates) return templates;
-    return templates.filter(
-      (template) => template.visitType === 'any' || template.visitType === noteData.visitType
-    );
-  }, [templates, showAllTemplates, noteData.visitType]);
+    return templates.filter((template) => {
+      const visitMatch = template.visitType === 'any' || template.visitType === noteData.visitType;
+      const toothMatch = !template.toothType || template.toothType === 'any' ||
+        template.toothType === noteData.toothType;
+      const procMatch = !template.procedureTypes || template.procedureTypes === 'any' ||
+        (Array.isArray(template.procedureTypes) &&
+          template.procedureTypes.some((p) =>
+            noteData.toothTreatmentPlans.some((plan) => (plan.treatmentPerformed ?? []).includes(p))
+          ));
+      return visitMatch && toothMatch && procMatch;
+    });
+  }, [templates, showAllTemplates, noteData.visitType, noteData.toothType, noteData.toothTreatmentPlans]);
 
   return (
     <div className="relative">
@@ -103,6 +118,12 @@ export function TemplateDropdown() {
                     setTemplateName('');
                     setSelectedScopes(['all']);
                     setTemplateVisitType(noteData.visitType);
+                    setTemplateToothType(noteData.toothType ?? 'any');
+                    setTemplateProcedureTypes(
+                      noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? []).length > 0
+                        ? noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? [])
+                        : 'any'
+                    );
                     setPendingOverwrite(null);
                   }
                 }}
@@ -198,6 +219,73 @@ export function TemplateDropdown() {
                             : 'Continuing'}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">
+                    Tooth Type Tag
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {(['any', 'anterior', 'premolar', 'molar'] as const).map((tt) => (
+                      <button
+                        key={tt}
+                        type="button"
+                        onClick={() => setTemplateToothType(tt)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium border ${
+                          templateToothType === tt
+                            ? 'bg-orange-500 text-white border-orange-500'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        {tt === 'any' ? 'Any Tooth' : tt.charAt(0).toUpperCase() + tt.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">
+                    Procedure Types Tag
+                  </label>
+                  <div className="flex gap-1 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setTemplateProcedureTypes('any')}
+                      className={`px-2 py-1 rounded-full text-xs font-medium border ${
+                        templateProcedureTypes === 'any'
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      Any
+                    </button>
+                    {treatmentOptionsOfferedData.map((opt) => {
+                      const isSelected = Array.isArray(templateProcedureTypes) && templateProcedureTypes.includes(opt.value);
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            if (templateProcedureTypes === 'any') {
+                              setTemplateProcedureTypes([opt.value]);
+                            } else if (Array.isArray(templateProcedureTypes)) {
+                              const next = isSelected
+                                ? templateProcedureTypes.filter((v) => v !== opt.value)
+                                : [...templateProcedureTypes, opt.value];
+                              setTemplateProcedureTypes(next.length > 0 ? next : 'any');
+                            }
+                          }}
+                          className={`px-2 py-1 rounded-full text-xs font-medium border ${
+                            isSelected
+                              ? 'bg-purple-600 text-white border-purple-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -307,6 +395,21 @@ export function TemplateDropdown() {
                                       ? 'First Visit'
                                       : 'Continuing'}
                                 </span>
+                                {template.toothType && template.toothType !== 'any' && (
+                                  <span className="px-2 py-0.5 text-[10px] rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-200">
+                                    {template.toothType.charAt(0).toUpperCase() + template.toothType.slice(1)}
+                                  </span>
+                                )}
+                                {Array.isArray(template.procedureTypes) && template.procedureTypes.length > 0 && (
+                                  template.procedureTypes.map((pt) => {
+                                    const label = treatmentOptionsOfferedData.find((o) => o.value === pt)?.label ?? pt;
+                                    return (
+                                      <span key={pt} className="px-2 py-0.5 text-[10px] rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200">
+                                        {label}
+                                      </span>
+                                    );
+                                  })
+                                )}
                                 {template.scope.map((scope) => (
                                   <span
                                     key={scope}

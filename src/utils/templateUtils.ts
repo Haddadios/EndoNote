@@ -47,8 +47,6 @@ export const templateScopeFields: Record<Exclude<TemplateScope, 'all'>, (keyof N
   ],
   assessment: ['toothDiagnoses', 'assessmentNotes'],
   plan: [
-    'treatmentOptionsOffered',
-    'treatmentOptionsOfferedOther',
     'treatmentComments',
     'consentGiven',
     'anesthesiaAmounts',
@@ -64,6 +62,7 @@ export const templateScopeFields: Record<Exclude<TemplateScope, 'all'>, (keyof N
     'restoration',
     'irrigationProtocol',
     'medicament',
+    'proceduralSteps',
     'complications',
     'complicationsComments',
     'postOpInstructions',

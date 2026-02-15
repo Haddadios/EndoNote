@@ -4,9 +4,12 @@ import { CopyButton } from '../common';
 import { generateSOAPNote } from '../../utils/soapGenerator';
 
 export function NoteOutput() {
-  const { noteData, noteOutputDraft, setNoteOutputDraft } = useNote();
+  const { noteData, preferences, noteOutputDraft, setNoteOutputDraft } = useNote();
 
-  const soapNote = useMemo(() => generateSOAPNote(noteData), [noteData]);
+  const soapNote = useMemo(
+    () => generateSOAPNote(noteData, parseFloat(preferences.defaultCarpuleVolume ?? '1.8')),
+    [noteData, preferences.defaultCarpuleVolume]
+  );
   const [noteText, setNoteText] = useState(noteOutputDraft ?? soapNote);
   const [isEditing, setIsEditing] = useState(false);
   const [isManual, setIsManual] = useState(Boolean(noteOutputDraft));

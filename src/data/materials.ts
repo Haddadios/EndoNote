@@ -70,28 +70,32 @@ export const workingLengthMethods: SelectOption[] = [
   { value: 'radiograph_film', label: 'Radiograph (File Film)' },
 ];
 
-// Instrumentation Systems (updated: removed Profile, GT Files, added Edge X7, Edge One)
+// Coronal Flare Options
+export const coronalFlareOptions: SelectOption[] = [
+  { value: 'orifice_opener', label: 'Orifice Opener Rotary File' },
+  { value: 'gates_glidden', label: 'Gates Glidden Burs' },
+  { value: 'other', label: 'Other' },
+];
+
+// Instrumentation Systems
 export const instrumentationSystems: SelectOption[] = [
+  { value: 'edge_x7', label: 'Edge X7' },
+  { value: 'vortex_blue', label: 'Vortex Blue' },
   { value: 'protaper_gold', label: 'ProTaper Gold' },
   { value: 'protaper_ultimate', label: 'ProTaper Ultimate' },
-  { value: 'protaper_next', label: 'ProTaper Next' },
   { value: 'waveone_gold', label: 'WaveOne Gold' },
   { value: 'reciproc_blue', label: 'Reciproc Blue' },
-  { value: 'vortex_blue', label: 'Vortex Blue' },
-  { value: 'twisted_file', label: 'Twisted File' },
-  { value: 'hyflex_edm', label: 'HyFlex EDM' },
-  { value: 'hyflex_cm', label: 'HyFlex CM' },
-  { value: 'xp_endo_shaper', label: 'XP-endo Shaper' },
+  { value: 'xp_endo_shaper', label: 'XP-Shaper' },
+  { value: 'xp_endo_finisher', label: 'XP-Finisher' },
   { value: 'k_files', label: 'Hand K-files' },
   { value: 'h_files', label: 'Hand H-files' },
-  { value: 'edge_file', label: 'EdgeFile' },
-  { value: 'edge_x7', label: 'Edge X7' },
-  { value: 'edge_one', label: 'Edge One' },
-  { value: 'trushape', label: 'TruShape' },
 ];
 
 // MAF Sizes
 export const mafSizes: SelectOption[] = [
+  { value: '6', label: '#6' },
+  { value: '8', label: '#8' },
+  { value: '10', label: '#10' },
   { value: '15', label: '#15' },
   { value: '20', label: '#20' },
   { value: '25', label: '#25' },
@@ -102,11 +106,20 @@ export const mafSizes: SelectOption[] = [
   { value: '50', label: '#50' },
   { value: '55', label: '#55' },
   { value: '60', label: '#60' },
+  { value: '70', label: '#70' },
+  { value: '80', label: '#80' },
+  { value: '90', label: '#90' },
+  { value: '100', label: '#100' },
   { value: 'f1', label: 'F1' },
   { value: 'f2', label: 'F2' },
   { value: 'f3', label: 'F3' },
   { value: 'f4', label: 'F4' },
   { value: 'f5', label: 'F5' },
+  { value: 'x1', label: 'X1' },
+  { value: 'x2', label: 'X2' },
+  { value: 'x3', label: 'X3' },
+  { value: 'x4', label: 'X4' },
+  { value: 'x5', label: 'X5' },
   { value: 'small', label: 'Small' },
   { value: 'primary', label: 'Primary' },
   { value: 'medium', label: 'Medium' },
@@ -115,10 +128,60 @@ export const mafSizes: SelectOption[] = [
 
 // MAF Tapers
 export const mafTapers: SelectOption[] = [
+  { value: '0.02', label: '0.02 taper' },
   { value: '0.04', label: '0.04 taper' },
   { value: '0.06', label: '0.06 taper' },
+  { value: '0.08', label: '0.08 taper' },
+  { value: '0.09', label: '0.09 taper' },
   { value: 'variable', label: 'Variable taper' },
 ];
+
+// File System Profiles — maps each system to its valid sizes and tapers
+export const fileSystemProfiles: Record<string, {
+  sizes: string[];
+  tapers: string[];
+}> = {
+  protaper_gold: {
+    sizes: ['f1', 'f2', 'f3', 'f4', 'f5'],
+    tapers: ['variable'],
+  },
+  protaper_ultimate: {
+    sizes: ['f1', 'f2', 'f3', 'f4', 'f5'],
+    tapers: ['variable'],
+  },
+  waveone_gold: {
+    sizes: ['small', 'primary', 'medium', 'large'],
+    tapers: ['variable'],
+  },
+  reciproc_blue: {
+    sizes: ['25', '40', '50'],
+    tapers: ['variable'],
+  },
+  vortex_blue: {
+    sizes: ['15', '20', '25', '30', '35', '40', '45', '50', '55'],
+    tapers: ['0.04', '0.06'],
+  },
+  xp_endo_shaper: {
+    sizes: [],
+    tapers: [],
+  },
+  xp_endo_finisher: {
+    sizes: [],
+    tapers: [],
+  },
+  k_files: {
+    sizes: ['6', '8', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55', '60', '70', '80', '90', '100'],
+    tapers: [],
+  },
+  h_files: {
+    sizes: ['6', '8', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55', '60', '70', '80', '90', '100'],
+    tapers: [],
+  },
+  edge_x7: {
+    sizes: ['15', '20', '25', '30', '35', '40'],
+    tapers: ['0.04', '0.06'],
+  },
+};
 
 // Irrigation Solutions (updated: added NaOCl 8.25%)
 export const irrigationSolutions: SelectOption[] = [
