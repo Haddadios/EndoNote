@@ -52,6 +52,11 @@ export function PlanSection() {
     new Set(noteData.toothTreatmentPlans.map((p) => p.id))
   );
   const [hasComplications, setHasComplications] = useState(false);
+  const [showMoreTypes, setShowMoreTypes] = useState(false);
+  const [showMoreLocations, setShowMoreLocations] = useState(false);
+
+  const mainAnesthesiaTypeValues = ['lidocaine_epi', 'articaine_200', 'carbocaine'];
+  const mainLocationValues = ['buccal_infiltration', 'lingual_palatal_infiltration', 'ian_block'];
   const [clearedState, setClearedState] = useState<{
     treatmentComments: string;
     consentGiven: boolean;
@@ -669,26 +674,49 @@ export function PlanSection() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Type & Amount (carpules)
           </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {anesthesiaTypes.map((type) => {
-              const key = type.value as keyof AnesthesiaAmounts;
-              const amount = noteData.anesthesiaAmounts[key] || '';
-              return (
-                <div key={type.value} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={amount}
-                    onChange={(e) => handleAnesthesiaAmountChange(key, e.target.value)}
-                    placeholder="0"
-                    className="w-16 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{type.label}</span>
+          {(() => {
+            const mainTypes = anesthesiaTypes.filter((t) => mainAnesthesiaTypeValues.includes(t.value));
+            const moreTypes = anesthesiaTypes.filter((t) => !mainAnesthesiaTypeValues.includes(t.value));
+            const hasHiddenValue = moreTypes.some((t) => {
+              const amt = noteData.anesthesiaAmounts[t.value as keyof AnesthesiaAmounts];
+              return amt && parseFloat(amt) > 0;
+            });
+            const expanded = showMoreTypes || hasHiddenValue;
+            const visibleTypes = expanded ? anesthesiaTypes : mainTypes;
+            return (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {visibleTypes.map((type) => {
+                    const key = type.value as keyof AnesthesiaAmounts;
+                    const amount = noteData.anesthesiaAmounts[key] || '';
+                    return (
+                      <div key={type.value} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={amount}
+                          onChange={(e) => handleAnesthesiaAmountChange(key, e.target.value)}
+                          placeholder="0"
+                          className="w-16 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{type.label}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+                {!hasHiddenValue && (
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreTypes(!expanded)}
+                    className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+                  >
+                    {expanded ? '- Show fewer' : '+ Show more'}
+                  </button>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -698,8 +726,16 @@ export function PlanSection() {
           <span className="text-xs font-semibold tracking-wide text-gray-700 dark:text-gray-200 uppercase">Location/Technique</span>
         </div>
         <div className="p-3">
+        {(() => {
+          const mainLocs = anesthesiaLocations.filter((l) => mainLocationValues.includes(l.value));
+          const moreLocs = anesthesiaLocations.filter((l) => !mainLocationValues.includes(l.value));
+          const hasHiddenSelected = moreLocs.some((l) => noteData.anesthesiaLocations.includes(l.value));
+          const expanded = showMoreLocations || hasHiddenSelected;
+          const visibleLocations = expanded ? anesthesiaLocations : mainLocs;
+          return (
+            <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {anesthesiaLocations.map((location) => {
+          {visibleLocations.map((location) => {
             const isSelected = noteData.anesthesiaLocations.includes(location.value);
             const locationAnesthetics = noteData.anesthesiaLocationMapping[location.value] || [];
             const isBilateral = bilateralLocations.includes(location.value);
@@ -783,6 +819,18 @@ export function PlanSection() {
             );
           })}
         </div>
+        {!hasHiddenSelected && (
+          <button
+            type="button"
+            onClick={() => setShowMoreLocations(!expanded)}
+            className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+          >
+            {expanded ? '- Show fewer' : '+ Show more'}
+          </button>
+        )}
+            </>
+          );
+        })()}
         </div>
       </div>
 

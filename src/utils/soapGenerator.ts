@@ -530,6 +530,13 @@ export function generateSOAPNote(data: NoteData, carpuleVolumeMl: number = 1.8):
   // === PLAN ===
   lines.push('PLAN:');
 
+  // Determine which treatments are being performed across all plans
+  const rctTreatments = new Set(['initial_rct', 'continuing_rct', 'ns_rerct']);
+  const allPerformedTreatments = (data.toothTreatmentPlans ?? []).flatMap(
+    (p) => p.treatmentPerformed ?? []
+  );
+  const hasRctTreatment = allPerformedTreatments.some((t) => rctTreatments.has(t));
+
   // Treatment Comments
   if (data.treatmentComments && data.treatmentComments.trim()) {
     lines.push(`Treatment notes: ${data.treatmentComments.trim()}`);
@@ -610,8 +617,8 @@ export function generateSOAPNote(data: NoteData, carpuleVolumeMl: number = 1.8):
     lines.push(anesthesia);
   }
 
-  // Isolation
-  if (data.isolation.length > 0) {
+  // Isolation (only for RCT-type treatments)
+  if (hasRctTreatment && data.isolation.length > 0) {
     lines.push(`Isolation: ${joinList(getLabels(isolationMethods, data.isolation))}`);
   }
 
@@ -897,8 +904,8 @@ export function generateSOAPNote(data: NoteData, carpuleVolumeMl: number = 1.8):
     lines.push(`Medicament: ${getLabel(medicaments, data.medicament)}`);
   }
 
-  // Irrigation
-  if (data.irrigationProtocol.length > 0) {
+  // Irrigation (only for RCT-type treatments)
+  if (hasRctTreatment && data.irrigationProtocol.length > 0) {
     const allOptions = [...irrigationSolutions, ...irrigationTechniques];
     const irrigation = data.irrigationProtocol.map((v) => {
       const cleanValue = v.startsWith('tech_') ? v.replace('tech_', '') : v;
@@ -907,8 +914,8 @@ export function generateSOAPNote(data: NoteData, carpuleVolumeMl: number = 1.8):
     lines.push(`Irrigation: ${joinList(irrigation)}`);
   }
 
-  // Restoration (after irrigation, before complications)
-  if (data.toothTreatmentPlans && data.toothTreatmentPlans.length > 0) {
+  // Restoration (only for RCT-type treatments)
+  if (hasRctTreatment && data.toothTreatmentPlans && data.toothTreatmentPlans.length > 0) {
     const restorationLines = data.toothTreatmentPlans
       .filter((plan) => plan.toothNumber && plan.restoration)
       .map((plan) => `  Tooth #${plan.toothNumber}: ${getLabel(restorationTypes, plan.restoration!)}`);
@@ -916,7 +923,7 @@ export function generateSOAPNote(data: NoteData, carpuleVolumeMl: number = 1.8):
       lines.push(`Restoration:`);
       restorationLines.forEach((r) => lines.push(r));
     }
-  } else if (data.restoration) {
+  } else if (hasRctTreatment && data.restoration) {
     lines.push(`Restoration: ${getLabel(restorationTypes, data.restoration)}`);
   }
 
@@ -940,8 +947,8 @@ export function generateSOAPNote(data: NoteData, carpuleVolumeMl: number = 1.8):
 
   lines.push('');
 
-  // Post-op instructions
-  if (data.postOpInstructions.length > 0) {
+  // Post-op instructions (only for RCT-type treatments)
+  if (hasRctTreatment && data.postOpInstructions.length > 0) {
     const instructions = getLabels(postOpInstructions, data.postOpInstructions);
     lines.push(`Post-op: ${joinList(instructions)}.`);
   }

@@ -3,8 +3,6 @@ import { useNote } from '../../context/NoteContext';
 import { Dropdown, CheckboxGroup } from '../common';
 import type { ProcedureDefaults, CarpuleVolume } from '../../types';
 import {
-  anesthesiaTypes,
-  anesthesiaLocations,
   isolationMethods,
   workingLengthMethods,
   instrumentationSystems,
@@ -56,22 +54,6 @@ function ProcedureDefaultsForm({ value, onChange }: ProcedureDefaultsFormProps) 
 
   return (
     <div className="space-y-4">
-      <CheckboxGroup
-        label="Anesthetic Types"
-        options={anesthesiaTypes}
-        selectedValues={value.anestheticTypes}
-        onChange={(v) => update('anestheticTypes', v)}
-        columns={2}
-      />
-
-      <CheckboxGroup
-        label="Injection Locations"
-        options={anesthesiaLocations}
-        selectedValues={value.injectionLocations}
-        onChange={(v) => update('injectionLocations', v)}
-        columns={2}
-      />
-
       <CheckboxGroup
         label="Isolation"
         options={isolationMethods}
@@ -213,7 +195,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   const handleResetToAppDefaults = () => {
     updatePreferences({
-      defaultCarpuleVolume: '1.8',
+      defaultCarpuleVolume: '1.7',
       generalDefaults: { ...emptyProcedureDefaults },
       defaultsByProcedure: {},
     });
@@ -289,7 +271,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         type="radio"
                         name="carpuleVolume"
                         value={vol}
-                        checked={(preferences.defaultCarpuleVolume ?? '1.8') === vol}
+                        checked={(preferences.defaultCarpuleVolume ?? '1.7') === vol}
                         onChange={() => handleCarpuleVolumeChange(vol)}
                         className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 focus:ring-blue-500"
                       />

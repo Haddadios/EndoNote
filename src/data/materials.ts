@@ -3,10 +3,10 @@ import type { SelectOption } from '../types';
 // Anesthesia Types (updated: added Marcaine, removed Septocaine)
 export const anesthesiaTypes: SelectOption[] = [
   { value: 'lidocaine_epi', label: 'Lidocaine 2% w/ 1:100,000 epi' },
-  { value: 'lidocaine_no_epi', label: 'Lidocaine 2% plain' },
-  { value: 'articaine_epi', label: 'Articaine 4% w/ 1:100,000 epi' },
   { value: 'articaine_200', label: 'Articaine 4% w/ 1:200,000 epi' },
   { value: 'carbocaine', label: 'Carbocaine 3% plain' },
+  { value: 'lidocaine_no_epi', label: 'Lidocaine 2% plain' },
+  { value: 'articaine_epi', label: 'Articaine 4% w/ 1:100,000 epi' },
   { value: 'bupivacaine', label: 'Bupivacaine 0.5% w/ 1:200,000 epi' },
   { value: 'marcaine', label: 'Marcaine 0.5% w/ 1:50,000 epi' },
 ];
