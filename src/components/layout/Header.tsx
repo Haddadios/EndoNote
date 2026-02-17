@@ -15,7 +15,7 @@ export function Header({
   activeTab: TopTab;
   onTabChange: (tab: TopTab) => void;
 }) {
-  const { noteData, preferences, updatePreferences, hasSavedDraft, clearSavedDraft, clearDraftAndReset, saveDraftToHistory, resetForm, updateTooth, updateToothDiagnosis } = useNote();
+  const { noteData, preferences, updatePreferences, hasSavedDraft, clearSavedDraft, clearDraftAndReset, saveDraftToHistory, updateTooth, updateToothDiagnosis } = useNote();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleNotationChange = (newNotation: ToothNotation) => {
@@ -43,7 +43,7 @@ export function Header({
     <>
     <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 py-3">
+        <div className="py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
@@ -52,7 +52,7 @@ export function Header({
             <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">EndoNote</h1>
           </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 flex-wrap justify-end">
             <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
               <span>Tooth Notation:</span>
               <select
@@ -99,11 +99,25 @@ export function Header({
 
             <button
               type="button"
-              onClick={resetForm}
-              className="px-3 py-2 text-sm font-medium rounded-md bg-gray-600 text-white hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600"
-              title="Reset form to defaults"
+              onClick={() => onTabChange('note')}
+              className={
+                activeTab === 'note'
+                  ? 'px-3 py-2 text-sm font-medium rounded-md border border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-500/50 dark:bg-blue-900/40 dark:text-blue-100'
+                  : 'px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
+              }
             >
-              Reset Form
+              Note Builder
+            </button>
+            <button
+              type="button"
+              onClick={() => onTabChange('referralTemplate')}
+              className={
+                activeTab === 'referralTemplate'
+                  ? 'px-3 py-2 text-sm font-medium rounded-md border border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-500/50 dark:bg-blue-900/40 dark:text-blue-100'
+                  : 'px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
+              }
+            >
+              Referral Template
             </button>
 
             <button
@@ -134,33 +148,8 @@ export function Header({
               )}
             </button>
           </div>
+          </div>
         </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onTabChange('note')}
-              className={
-                activeTab === 'note'
-                  ? 'px-3 py-1.5 text-xs font-semibold rounded-full bg-blue-600 text-white'
-                  : 'px-3 py-1.5 text-xs font-medium rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700'
-              }
-            >
-              Note Builder
-            </button>
-            <button
-              type="button"
-              onClick={() => onTabChange('referralTemplate')}
-              className={
-                activeTab === 'referralTemplate'
-                  ? 'px-3 py-1.5 text-xs font-semibold rounded-full bg-blue-600 text-white'
-                  : 'px-3 py-1.5 text-xs font-medium rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700'
-              }
-            >
-              Referral Template
-            </button>
-          </div>
       </div>
     </header>
 

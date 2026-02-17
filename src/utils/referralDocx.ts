@@ -404,7 +404,7 @@ const buildRadiographTable = async (
 };
 
 export async function buildReferralDocx(noteData: NoteData, template: ReferralTemplate) {
-  const blocks = buildReferralBlocks(noteData);
+  const blocks = buildReferralBlocks(noteData, template.includePostOpInstructions);
   const children: (Paragraph | Table)[] = [];
   const boldLabels = [
     'Patient Name',

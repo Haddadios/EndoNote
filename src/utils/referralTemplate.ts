@@ -49,6 +49,7 @@ export const defaultReferralTemplate: ReferralTemplate = {
     slotWidthIn: 2.31,
     slotHeightIn: 1.65,
   },
+  includePostOpInstructions: false,
   signature: {
     enabled: true,
     lines: ['Sincerely,', ''],
@@ -75,7 +76,12 @@ export const normalizeReferralTemplate = (template?: Partial<ReferralTemplate>):
     enabled: block.enabled ?? true,
     text: block.text ?? '',
     align: block.align ?? 'left',
-    logo: block.logo,
+    logo: block.logo
+      ? {
+          ...block.logo,
+          widthIn: Number.isFinite(block.logo.widthIn) ? block.logo.widthIn : 2.5,
+        }
+      : undefined,
   }));
 
   const merged: ReferralTemplate = {
@@ -108,6 +114,7 @@ export const normalizeReferralTemplate = (template?: Partial<ReferralTemplate>):
       ...defaultReferralTemplate.radiographs,
       ...(template?.radiographs ?? {}),
     },
+    includePostOpInstructions: template?.includePostOpInstructions ?? defaultReferralTemplate.includePostOpInstructions,
     signature: {
       ...defaultReferralTemplate.signature,
       ...(template?.signature ?? {}),

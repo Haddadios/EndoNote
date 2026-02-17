@@ -260,6 +260,7 @@ export interface ReferralTemplate {
     slotWidthIn: number;
     slotHeightIn: number;
   };
+  includePostOpInstructions: boolean;
   signature: {
     enabled: boolean;
     lines: string[];

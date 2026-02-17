@@ -318,7 +318,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           {activeTab === 'generalDefaults' && (
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                These defaults are applied when you click <strong>Reset Form</strong>.
+                These defaults are applied when you reset the note form.
               </p>
               <ProcedureDefaultsForm
                 value={preferences.generalDefaults ?? emptyProcedureDefaults}

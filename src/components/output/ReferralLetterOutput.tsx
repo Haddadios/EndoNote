@@ -8,7 +8,10 @@ import { saveAs } from 'file-saver';
 export function ReferralLetterOutput() {
   const { noteData, referralTemplate, referralOutputDraft, setReferralOutputDraft } = useNote();
 
-  const letter = useMemo(() => generateReferralLetter(noteData), [noteData]);
+  const letter = useMemo(
+    () => generateReferralLetter(noteData, referralTemplate.includePostOpInstructions),
+    [noteData, referralTemplate.includePostOpInstructions]
+  );
   const [letterText, setLetterText] = useState(referralOutputDraft ?? letter);
   const [isEditing, setIsEditing] = useState(false);
   const [isManual, setIsManual] = useState(Boolean(referralOutputDraft));

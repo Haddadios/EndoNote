@@ -139,31 +139,42 @@ export function ReferralSection() {
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Radiographs (for referral export)
         </label>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => {
-            const files = Array.from(e.target.files || []);
-            if (files.length === 0) return;
-            Promise.all(
-              files.map(
-                (file) =>
-                  new Promise<string>((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(String(reader.result || ''));
-                    reader.onerror = () => reject(reader.error);
-                    reader.readAsDataURL(file);
-                  })
-              )
-            )
-              .then((dataUrls) => updateField('referralRadiographs', [...noteData.referralRadiographs, ...dataUrls]))
-              .catch((err) => {
-                console.error('Failed to load radiographs', err);
-              });
-          }}
-          className="text-xs text-gray-600 dark:text-gray-300"
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50 cursor-pointer dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+            <span>{noteData.referralRadiographs.length > 0 ? 'Add More Radiographs' : 'Upload Radiographs'}</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length === 0) return;
+                Promise.all(
+                  files.map(
+                    (file) =>
+                      new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(String(reader.result || ''));
+                        reader.onerror = () => reject(reader.error);
+                        reader.readAsDataURL(file);
+                      })
+                  )
+                )
+                  .then((dataUrls) => updateField('referralRadiographs', [...noteData.referralRadiographs, ...dataUrls]))
+                  .catch((err) => {
+                    console.error('Failed to load radiographs', err);
+                  });
+              }}
+              className="sr-only"
+            />
+          </label>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {noteData.referralRadiographs.length} image{noteData.referralRadiographs.length === 1 ? '' : 's'} added
+          </span>
+        </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Select one or more image files. Added images appear below.
+        </p>
 
         {noteData.referralRadiographs.length > 0 && (
           <div className="mt-3 grid grid-cols-2 gap-3">

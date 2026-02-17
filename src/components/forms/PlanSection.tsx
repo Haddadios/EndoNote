@@ -31,6 +31,135 @@ import {
   referralOptions,
 } from '../../data';
 
+const isoColorSystems = new Set(['k_files', 'h_files', 'vortex_blue', 'edge_x7']);
+const isoSequence = ['white', 'yellow', 'red', 'blue', 'green', 'black'] as const;
+const isoSizes = [15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 100, 110, 120, 130, 140];
+type SizeColorKey = 'pink' | 'gray' | 'purple' | 'white' | 'yellow' | 'red' | 'blue' | 'green' | 'black';
+
+const getIsoColorKeyForSize = (sizeVal: string): (typeof isoSequence)[number] | 'pink' | 'gray' | 'purple' | null => {
+  const size = Number(sizeVal);
+  if (!Number.isFinite(size)) return null;
+  if (size === 6) return 'pink';
+  if (size === 8) return 'gray';
+  if (size === 10) return 'purple';
+  const index = isoSizes.indexOf(size);
+  if (index === -1) return null;
+  return isoSequence[index % isoSequence.length];
+};
+
+const systemSpecificSizeColors: Record<string, Record<string, SizeColorKey>> = {
+  protaper_gold: {
+    f1: 'yellow',
+    f2: 'red',
+    f3: 'blue',
+    f4: 'black',
+    f5: 'yellow',
+  },
+  protaper_ultimate: {
+    f1: 'yellow',
+    f2: 'red',
+    f3: 'blue',
+    f4: 'black',
+    f5: 'yellow',
+  },
+  waveone_gold: {
+    small: 'yellow',
+    primary: 'red',
+    medium: 'green',
+    large: 'white',
+  },
+  reciproc_blue: {
+    '25': 'red',
+    '40': 'black',
+    '50': 'yellow',
+  },
+};
+
+const sizeButtonClasses: Record<SizeColorKey, { base: string; active: string }> = {
+  pink: {
+    base: 'bg-pink-100 text-pink-800 border border-pink-300 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-700 dark:hover:bg-pink-900/50',
+    active: 'bg-pink-600 text-white border border-pink-700 ring-2 ring-pink-300 dark:bg-pink-700 dark:ring-pink-500',
+  },
+  gray: {
+    base: 'bg-gray-200 text-gray-800 border border-gray-300 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600',
+    active: 'bg-gray-600 text-white border border-gray-700 ring-2 ring-gray-300 dark:bg-gray-500 dark:ring-gray-400',
+  },
+  purple: {
+    base: 'bg-violet-100 text-violet-800 border border-violet-300 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-700 dark:hover:bg-violet-900/50',
+    active: 'bg-violet-600 text-white border border-violet-700 ring-2 ring-violet-300 dark:bg-violet-700 dark:ring-violet-500',
+  },
+  white: {
+    base: 'bg-white text-gray-900 border border-gray-300 hover:bg-gray-100 dark:bg-gray-100 dark:text-gray-900 dark:border-gray-300 dark:hover:bg-white',
+    active: 'bg-gray-100 text-gray-900 border border-gray-400 ring-2 ring-gray-300 dark:bg-white dark:text-gray-900 dark:border-gray-400 dark:ring-gray-300',
+  },
+  yellow: {
+    base: 'bg-yellow-100 text-yellow-900 border border-yellow-300 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700 dark:hover:bg-yellow-900/50',
+    active: 'bg-yellow-500 text-white border border-yellow-600 ring-2 ring-yellow-300 dark:bg-yellow-600 dark:ring-yellow-500',
+  },
+  red: {
+    base: 'bg-red-100 text-red-800 border border-red-300 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700 dark:hover:bg-red-900/50',
+    active: 'bg-red-600 text-white border border-red-700 ring-2 ring-red-300 dark:bg-red-700 dark:ring-red-500',
+  },
+  blue: {
+    base: 'bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-900/50',
+    active: 'bg-blue-600 text-white border border-blue-700 ring-2 ring-blue-300 dark:bg-blue-700 dark:ring-blue-500',
+  },
+  green: {
+    base: 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700 dark:hover:bg-green-900/50',
+    active: 'bg-green-600 text-white border border-green-700 ring-2 ring-green-300 dark:bg-green-700 dark:ring-green-500',
+  },
+  black: {
+    base: 'bg-gray-900 text-white border border-gray-900 hover:bg-black dark:bg-gray-900 dark:text-white dark:border-gray-700 dark:hover:bg-black',
+    active: 'bg-black text-white border border-black ring-2 ring-gray-400 dark:bg-black dark:ring-gray-500',
+  },
+};
+
+const getSizeColorKeyForSystem = (systemKey: string, sizeVal: string): SizeColorKey | null => {
+  const explicitColor = systemSpecificSizeColors[systemKey]?.[sizeVal.toLowerCase()];
+  if (explicitColor) return explicitColor;
+  if (isoColorSystems.has(systemKey)) {
+    const isoColor = getIsoColorKeyForSize(sizeVal);
+    if (isoColor) return isoColor;
+  }
+  return null;
+};
+
+const getSizeButtonClasses = (sizeVal: string, isSelected: boolean, systemKey: string | undefined) => {
+  if (systemKey) {
+    const colorKey = getSizeColorKeyForSystem(systemKey, sizeVal);
+    if (colorKey) {
+      return isSelected ? sizeButtonClasses[colorKey].active : sizeButtonClasses[colorKey].base;
+    }
+  }
+  return isSelected
+    ? 'bg-blue-600 text-white'
+    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600';
+};
+
+const taperColorSystems = new Set(['vortex_blue', 'edge_x7']);
+const taperButtonClassesByValue: Record<string, { base: string; active: string }> = {
+  '0.04': {
+    base: 'bg-cyan-100 text-cyan-800 border border-cyan-300 hover:bg-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-700 dark:hover:bg-cyan-900/50',
+    active: 'bg-cyan-600 text-white border border-cyan-700 ring-2 ring-cyan-300 dark:bg-cyan-700 dark:ring-cyan-500',
+  },
+  '0.06': {
+    base: 'bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-300 hover:bg-fuchsia-200 dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-700 dark:hover:bg-fuchsia-900/50',
+    active: 'bg-fuchsia-600 text-white border border-fuchsia-700 ring-2 ring-fuchsia-300 dark:bg-fuchsia-700 dark:ring-fuchsia-500',
+  },
+};
+
+const getTaperButtonClasses = (taperVal: string, isSelected: boolean, systemKey: string | undefined) => {
+  if (systemKey && taperColorSystems.has(systemKey)) {
+    const taperColors = taperButtonClassesByValue[taperVal];
+    if (taperColors) {
+      return isSelected ? taperColors.active : taperColors.base;
+    }
+  }
+  return isSelected
+    ? 'bg-blue-600 text-white'
+    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600';
+};
+
 export function PlanSection() {
   const {
     noteData,
@@ -1147,6 +1276,7 @@ export function PlanSection() {
                               updateToothTreatmentCanalMAF(activePlan.id, canal, 'size', maf.size === sizeVal ? '' : sizeVal);
                             }
                           };
+                          const singleSystemKey = selectedSystems[0];
 
                           return (
                             <div className="mb-3">
@@ -1197,17 +1327,19 @@ export function PlanSection() {
                                         Size{isHandFileMode ? ' (select all used)' : ''}
                                       </label>
                                       <div className="flex flex-wrap gap-1">
-                                        {availableSizes.map(sizeVal => {
-                                          const opt = mafSizes.find(s => s.value === sizeVal);
-                                          const label = opt ? opt.label : sizeVal;
-                                          const isSelected = isHandFileMode ? selectedSizes.includes(sizeVal) : maf.size === sizeVal;
-                                          return (
-                                            <button key={sizeVal} type="button" onClick={() => handleSizeToggle(sizeVal)}
-                                              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
-                                              {label}
-                                            </button>
-                                          );
-                                        })}
+                                        {(() => {
+                                          return availableSizes.map(sizeVal => {
+                                            const opt = mafSizes.find(s => s.value === sizeVal);
+                                            const label = opt ? opt.label : sizeVal;
+                                            const isSelected = isHandFileMode ? selectedSizes.includes(sizeVal) : maf.size === sizeVal;
+                                            return (
+                                              <button key={sizeVal} type="button" onClick={() => handleSizeToggle(sizeVal)}
+                                                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${getSizeButtonClasses(sizeVal, isSelected, singleSystemKey)}`}>
+                                                {label}
+                                              </button>
+                                            );
+                                          });
+                                        })()}
                                       </div>
                                     </div>
                                   )}
@@ -1222,7 +1354,7 @@ export function PlanSection() {
                                           return (
                                             <button key={taperVal} type="button"
                                               onClick={() => updateToothTreatmentCanalMAF(activePlan.id, canal, 'taper', isSelected ? '' : taperVal)}
-                                              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                                              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${getTaperButtonClasses(taperVal, isSelected, singleSystemKey)}`}>
                                               {label}
                                             </button>
                                           );
@@ -1266,7 +1398,7 @@ export function PlanSection() {
                                                     updateToothTreatmentSystemSize(activePlan.id, canal, sysKey, nextSize, currentTaper);
                                                   }
                                                 }}
-                                                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                                                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${getSizeButtonClasses(sizeVal, isSelected, sysKey)}`}>
                                                 {label}
                                               </button>
                                             );
@@ -1281,7 +1413,7 @@ export function PlanSection() {
                                               return (
                                                 <button key={taperVal} type="button"
                                                   onClick={() => updateToothTreatmentSystemSize(activePlan.id, canal, sysKey, currentSize, isSelected ? '' : taperVal)}
-                                                  className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                                                  className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${getTaperButtonClasses(taperVal, isSelected, sysKey)}`}>
                                                   {label}
                                                 </button>
                                               );

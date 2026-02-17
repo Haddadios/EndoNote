@@ -48,7 +48,7 @@ export interface ReferralBlocks {
   closing: string;
 }
 
-export function buildReferralBlocks(noteData: NoteData): ReferralBlocks {
+export function buildReferralBlocks(noteData: NoteData, includePostOpInstructions = true): ReferralBlocks {
   // Collect all teeth from diagnoses
   const diagnosedTeeth = noteData.toothDiagnoses
     .filter((d) => d.toothNumber)
@@ -265,7 +265,9 @@ export function buildReferralBlocks(noteData: NoteData): ReferralBlocks {
         }
       });
 
-      completionSection.push(`  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`);
+      if (includePostOpInstructions) {
+        completionSection.push(`  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`);
+      }
     } else {
       const _legacyPerformed = noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? []);
       const planSelectedTreatment = _legacyPerformed[0]
@@ -289,7 +291,9 @@ export function buildReferralBlocks(noteData: NoteData): ReferralBlocks {
         completionSection.push(`  Temporized/Restored with: ${temporizedWith}`);
       }
 
-      completionSection.push(`  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`);
+      if (includePostOpInstructions) {
+        completionSection.push(`  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`);
+      }
     }
   }
 
@@ -315,8 +319,8 @@ export function buildReferralBlocks(noteData: NoteData): ReferralBlocks {
   };
 }
 
-export function generateReferralLetter(noteData: NoteData) {
-  const blocks = buildReferralBlocks(noteData);
+export function generateReferralLetter(noteData: NoteData, includePostOpInstructions = true) {
+  const blocks = buildReferralBlocks(noteData, includePostOpInstructions);
   const completionLines = blocks.completionLines.length > 0 ? blocks.completionLines : [];
 
   return [

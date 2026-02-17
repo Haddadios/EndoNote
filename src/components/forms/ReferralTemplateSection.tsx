@@ -47,7 +47,10 @@ export function ReferralTemplateSection() {
   const marginValues = useMemo(() => referralTemplate.page.marginsIn, [referralTemplate.page.marginsIn]);
   const radiographSlots = Math.max(0, referralTemplate.radiographs.slots);
   const radiographColumns = Math.max(1, referralTemplate.radiographs.columns);
-  const previewBlocks = useMemo(() => buildReferralBlocks(noteData), [noteData]);
+  const previewBlocks = useMemo(
+    () => buildReferralBlocks(noteData, referralTemplate.includePostOpInstructions),
+    [noteData, referralTemplate.includePostOpInstructions]
+  );
   const patientNameToken = noteData.patientName || 'NAME';
   const boldLabels = useMemo(
     () => [
@@ -339,7 +342,7 @@ export function ReferralTemplateSection() {
           onClick={() => updateTemplate(defaultReferralTemplate)}
           className="text-xs px-3 py-1 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
         >
-          Reset to Default
+          Reset Referral Form
         </button>
       </div>
 
@@ -762,6 +765,23 @@ export function ReferralTemplateSection() {
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
           />
         </label>
+
+        <div className="mb-3">
+          <label className="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
+            <input
+              id="referral-include-post-op"
+              type="checkbox"
+              checked={referralTemplate.includePostOpInstructions}
+              onChange={(e) =>
+                updateTemplate({
+                  ...referralTemplate,
+                  includePostOpInstructions: e.target.checked,
+                })
+              }
+            />
+            <span>Include post-op instructions in completion section</span>
+          </label>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <label className="text-xs text-gray-600 dark:text-gray-300">
