@@ -156,6 +156,10 @@ const buildHeader = (template: ReferralTemplate) => {
         right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
       };
       const textLines = block.text.trim() ? block.text.split('\n') : [''];
+      const textOffsetLine = new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        children: [new TextRun({ text: '', size: ptToHalfPoints(template.headerFontSizePt) })],
+      });
 
       const logoCellChildren: Paragraph[] = [];
       if (block.logo?.dataUrl) {
@@ -166,7 +170,7 @@ const buildHeader = (template: ReferralTemplate) => {
               buildImageRun(
                 block.logo.dataUrl,
                 block.logo.widthIn,
-                resolveImageHeightIn(block.logo.widthIn, block.logo.heightIn, block.logo.aspectRatio)
+                resolveImageHeightIn(block.logo.widthIn, undefined, block.logo.aspectRatio)
               ),
             ],
           })
@@ -175,13 +179,16 @@ const buildHeader = (template: ReferralTemplate) => {
         logoCellChildren.push(new Paragraph({ text: '' }));
       }
 
-      const textCellChildren: Paragraph[] = textLines.map(
-        (line) =>
-          new Paragraph({
-            alignment: AlignmentType.RIGHT,
-            children: [new TextRun({ text: line, size: ptToHalfPoints(template.headerFontSizePt) })],
-          })
-      );
+      const textCellChildren: Paragraph[] = [
+        textOffsetLine,
+        ...textLines.map(
+          (line) =>
+            new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [new TextRun({ text: line, size: ptToHalfPoints(template.headerFontSizePt) })],
+            })
+        ),
+      ];
 
       children.push(
         new Table({
@@ -217,7 +224,7 @@ const buildHeader = (template: ReferralTemplate) => {
             buildImageRun(
               block.logo.dataUrl,
               block.logo.widthIn,
-              resolveImageHeightIn(block.logo.widthIn, block.logo.heightIn, block.logo.aspectRatio)
+              resolveImageHeightIn(block.logo.widthIn, undefined, block.logo.aspectRatio)
             ),
           ],
         })

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNote } from '../../context/NoteContext';
 import { defaultReferralTemplate } from '../../utils/referralTemplate';
 import { buildReferralBlocks } from '../../utils/referralLetterGenerator';
@@ -42,7 +42,24 @@ const createHeaderBlock = (): ReferralTemplateHeaderBlock => ({
 });
 
 export function ReferralTemplateSection() {
-  const { referralTemplate, updateReferralTemplate, noteData } = useNote();
+  const {
+    referralTemplate,
+    updateReferralTemplate,
+    noteData,
+    referralTemplates,
+    activeReferralTemplateId,
+    setActiveReferralTemplate,
+    saveReferralTemplateAs,
+    renameReferralTemplate,
+    deleteReferralTemplate,
+  } = useNote();
+  const activeTemplateMeta = useMemo(
+    () => referralTemplates.find((template) => template.id === activeReferralTemplateId) ?? referralTemplates[0],
+    [referralTemplates, activeReferralTemplateId]
+  );
+  const [templateNameInput, setTemplateNameInput] = useState(activeTemplateMeta?.name ?? '');
+  const [templateError, setTemplateError] = useState<string | null>(null);
+  const activeTemplateIdRef = useRef(activeReferralTemplateId);
 
   const marginValues = useMemo(() => referralTemplate.page.marginsIn, [referralTemplate.page.marginsIn]);
   const radiographSlots = Math.max(0, referralTemplate.radiographs.slots);
@@ -66,25 +83,44 @@ export function ReferralTemplateSection() {
     []
   );
 
-  const updateTemplate = (next: typeof referralTemplate) => {
+  const updateTemplate = (next: typeof referralTemplate, targetTemplateId = activeReferralTemplateId) => {
+    if (activeTemplateIdRef.current !== targetTemplateId) {
+      return;
+    }
     updateReferralTemplate(next);
   };
 
   useEffect(() => {
+    activeTemplateIdRef.current = activeReferralTemplateId;
+  }, [activeReferralTemplateId]);
+
+  useEffect(() => {
+    setTemplateNameInput(activeTemplateMeta?.name ?? '');
+    setTemplateError(null);
+  }, [activeTemplateMeta?.id, activeTemplateMeta?.name]);
+
+  useEffect(() => {
     const hydrateAspectRatios = async () => {
+      const templateIdAtStart = activeReferralTemplateId;
       let updated = false;
       const nextHeaderBlocks = await Promise.all(
         referralTemplate.headerBlocks.map(async (block) => {
-          if (!block.logo?.dataUrl || block.logo.aspectRatio) return block;
-          const aspectRatio = await getAspectRatioFromDataUrl(block.logo.dataUrl);
+          if (!block.logo?.dataUrl) return block;
+          let aspectRatio = block.logo.aspectRatio;
+          if (!aspectRatio) {
+            aspectRatio = await getAspectRatioFromDataUrl(block.logo.dataUrl);
+          }
           if (!aspectRatio) return block;
+          if (block.logo.aspectRatio === aspectRatio && block.logo.heightIn === undefined) {
+            return block;
+          }
           updated = true;
           return {
             ...block,
             logo: {
               ...block.logo,
               aspectRatio,
-              heightIn: block.logo.widthIn / aspectRatio,
+              heightIn: undefined,
             },
           };
         })
@@ -125,7 +161,7 @@ export function ReferralTemplateSection() {
           ...referralTemplate.signature,
           image: nextSignatureImage,
         },
-      });
+      }, templateIdAtStart);
     };
 
     void hydrateAspectRatios();
@@ -135,6 +171,7 @@ export function ReferralTemplateSection() {
     referralTemplate.signature,
     updateTemplate,
     referralTemplate,
+    activeReferralTemplateId,
   ]);
 
   const updateMargins = (key: keyof typeof marginValues, value: string) => {
@@ -150,11 +187,15 @@ export function ReferralTemplateSection() {
     });
   };
 
-  const updateHeaderBlock = (id: string, updater: (block: ReferralTemplateHeaderBlock) => ReferralTemplateHeaderBlock) => {
+  const updateHeaderBlock = (
+    id: string,
+    updater: (block: ReferralTemplateHeaderBlock) => ReferralTemplateHeaderBlock,
+    targetTemplateId = activeReferralTemplateId
+  ) => {
     updateTemplate({
       ...referralTemplate,
       headerBlocks: referralTemplate.headerBlocks.map((block) => (block.id === id ? updater(block) : block)),
-    });
+    }, targetTemplateId);
   };
 
   const moveHeaderBlock = (fromIndex: number, toIndex: number) => {
@@ -176,6 +217,7 @@ export function ReferralTemplateSection() {
   };
 
   const handleHeaderLogoUpload = async (blockId: string, file: File) => {
+    const templateIdAtStart = activeReferralTemplateId;
     const dataUrl = await readFileAsDataUrl(file);
     const img = new Image();
     const imageMeta = await new Promise<{ width: number; height: number }>((resolve, reject) => {
@@ -186,20 +228,19 @@ export function ReferralTemplateSection() {
     const aspectRatio = imageMeta.width > 0 ? imageMeta.width / imageMeta.height : undefined;
     updateHeaderBlock(blockId, (block) => {
       const widthIn = block.logo?.widthIn ?? 2.5;
-      const heightIn = aspectRatio ? widthIn / aspectRatio : block.logo?.heightIn;
       return {
         ...block,
         logo: {
           dataUrl,
           widthIn,
-          heightIn,
           aspectRatio,
         },
       };
-    });
+    }, templateIdAtStart);
   };
 
   const handleFooterImageUpload = async (file: File) => {
+    const templateIdAtStart = activeReferralTemplateId;
     const dataUrl = await readFileAsDataUrl(file);
     const img = new Image();
     const imageMeta = await new Promise<{ width: number; height: number }>((resolve, reject) => {
@@ -219,10 +260,11 @@ export function ReferralTemplateSection() {
         aspectRatio,
         align: referralTemplate.footerImage?.align ?? referralTemplate.footer.align,
       },
-    });
+    }, templateIdAtStart);
   };
 
   const handleSignatureUpload = async (file: File) => {
+    const templateIdAtStart = activeReferralTemplateId;
     const dataUrl = await readFileAsDataUrl(file);
     const img = new Image();
     const imageMeta = await new Promise<{ width: number; height: number }>((resolve, reject) => {
@@ -244,7 +286,7 @@ export function ReferralTemplateSection() {
           aspectRatio,
         },
       },
-    });
+    }, templateIdAtStart);
   };
 
   const renderLineWithBoldLabel = (line: string) => {
@@ -280,7 +322,7 @@ export function ReferralTemplateSection() {
         alt="Header Logo"
         style={{
           width: `${block.logo.widthIn}in`,
-          height: block.logo.heightIn ? `${block.logo.heightIn}in` : 'auto',
+          height: 'auto',
           display: 'block',
         }}
       />
@@ -293,7 +335,12 @@ export function ReferralTemplateSection() {
           {block.text.trim() && (
             <div
               className="whitespace-pre-line"
-              style={{ textAlign: 'right', justifySelf: 'end', fontSize: `${referralTemplate.headerFontSizePt}pt` }}
+              style={{
+                textAlign: 'right',
+                justifySelf: 'end',
+                fontSize: `${referralTemplate.headerFontSizePt}pt`,
+                paddingTop: '0.16in',
+              }}
             >
               {block.text}
             </div>
@@ -310,7 +357,7 @@ export function ReferralTemplateSection() {
           alt="Header Logo"
           style={{
             width: `${block.logo!.widthIn}in`,
-            height: block.logo!.heightIn ? `${block.logo!.heightIn}in` : 'auto',
+            height: 'auto',
             display: 'block',
             marginLeft: alignment === 'left' ? 0 : 'auto',
             marginRight: alignment === 'right' ? 0 : 'auto',
@@ -333,6 +380,59 @@ export function ReferralTemplateSection() {
     );
   };
 
+  const trimmedTemplateName = templateNameInput.trim();
+  const hasTemplateNameConflict = referralTemplates.some(
+    (template) =>
+      template.id !== activeTemplateMeta?.id &&
+      template.name.toLowerCase() === trimmedTemplateName.toLowerCase()
+  );
+
+  const handleSaveAsNew = () => {
+    if (!trimmedTemplateName) {
+      setTemplateError('Template name is required.');
+      return;
+    }
+    if (referralTemplates.some((template) => template.name.toLowerCase() === trimmedTemplateName.toLowerCase())) {
+      setTemplateError('A referral template with that name already exists.');
+      return;
+    }
+    saveReferralTemplateAs(trimmedTemplateName);
+    setTemplateError(null);
+  };
+
+  const handleRenameActive = () => {
+    if (!activeTemplateMeta) {
+      setTemplateError('No active template selected.');
+      return;
+    }
+    if (!trimmedTemplateName) {
+      setTemplateError('Template name is required.');
+      return;
+    }
+    if (hasTemplateNameConflict) {
+      setTemplateError('A referral template with that name already exists.');
+      return;
+    }
+    renameReferralTemplate(activeTemplateMeta.id, trimmedTemplateName);
+    setTemplateError(null);
+  };
+
+  const handleDeleteActive = () => {
+    if (!activeTemplateMeta) {
+      setTemplateError('No active template selected.');
+      return;
+    }
+    if (referralTemplates.length <= 1) {
+      setTemplateError('At least one referral template must remain.');
+      return;
+    }
+    if (!window.confirm(`Delete referral template "${activeTemplateMeta.name}"?`)) {
+      return;
+    }
+    deleteReferralTemplate(activeTemplateMeta.id);
+    setTemplateError(null);
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="flex items-center justify-between mb-4">
@@ -344,6 +444,80 @@ export function ReferralTemplateSection() {
         >
           Reset Referral Form
         </button>
+      </div>
+
+      <div className="mb-4 rounded-md border border-gray-200 dark:border-gray-700 p-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="text-xs text-gray-600 dark:text-gray-300">
+            Active Template
+            <select
+              value={activeReferralTemplateId}
+              onChange={(e) => {
+                setActiveReferralTemplate(e.target.value);
+                setTemplateError(null);
+              }}
+              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+            >
+              {referralTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-gray-600 dark:text-gray-300">
+            Template Name
+            <input
+              type="text"
+              value={templateNameInput}
+              onChange={(e) => {
+                setTemplateNameInput(e.target.value);
+                setTemplateError(null);
+              }}
+              placeholder="Template name"
+              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+            />
+          </label>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleSaveAsNew}
+            disabled={!trimmedTemplateName}
+            className="text-xs px-3 py-1 rounded-md border border-blue-300 text-blue-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/30"
+          >
+            Save as New
+          </button>
+          <button
+            type="button"
+            onClick={handleRenameActive}
+            disabled={
+              !activeTemplateMeta ||
+              !trimmedTemplateName ||
+              (activeTemplateMeta.name === trimmedTemplateName) ||
+              hasTemplateNameConflict
+            }
+            className="text-xs px-3 py-1 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            Rename Active
+          </button>
+          <button
+            type="button"
+            onClick={handleDeleteActive}
+            disabled={referralTemplates.length <= 1}
+            className="text-xs px-3 py-1 rounded-md border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/30"
+          >
+            Delete Active
+          </button>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {referralTemplates.length} template{referralTemplates.length === 1 ? '' : 's'} saved locally
+          </span>
+        </div>
+
+        {templateError && (
+          <p className="mt-2 text-xs text-red-600 dark:text-red-400">{templateError}</p>
+        )}
       </div>
 
       <div className="mb-4">
@@ -470,7 +644,7 @@ export function ReferralTemplateSection() {
                 className="mb-3 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="text-xs text-gray-600 dark:text-gray-300">
                   Alignment
                   <select
@@ -495,50 +669,17 @@ export function ReferralTemplateSection() {
                     min={0.5}
                     step={0.1}
                     value={block.logo?.widthIn ?? 2.5}
-                    onChange={(e) =>
-                      updateHeaderBlock(block.id, (prev) => ({
-                        ...prev,
-                        logo: prev.logo
-                          ? {
-                              ...prev.logo,
-                              widthIn: toNumber(e.target.value, 2.5),
-                              heightIn: prev.logo.aspectRatio
-                                ? toNumber(e.target.value, 2.5) / prev.logo.aspectRatio
-                                : prev.logo.heightIn,
-                            }
-                          : { dataUrl: '', widthIn: toNumber(e.target.value, 2.5) },
-                      }))
-                    }
-                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
-                  />
-                </label>
-                <label className="text-xs text-gray-600 dark:text-gray-300">
-                  Logo Height (in)
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.1}
-                    value={block.logo?.heightIn ?? ''}
                     onChange={(e) => {
-                      const nextValue = e.target.value;
+                      const widthIn = toNumber(e.target.value, 2.5);
                       updateHeaderBlock(block.id, (prev) => ({
                         ...prev,
                         logo: prev.logo
                           ? {
                               ...prev.logo,
-                              heightIn: nextValue === '' ? undefined : toNumber(nextValue, prev.logo?.heightIn ?? 0.6),
-                              aspectRatio:
-                                nextValue === '' || !prev.logo?.widthIn
-                                  ? prev.logo?.aspectRatio
-                                  : prev.logo.widthIn / toNumber(nextValue, prev.logo.heightIn ?? 0.6),
+                              widthIn,
+                              heightIn: undefined,
                             }
-                          : {
-                              dataUrl: '',
-                              widthIn: 2.5,
-                              heightIn: nextValue === '' ? undefined : toNumber(nextValue, 0.6),
-                              aspectRatio:
-                                nextValue === '' ? undefined : 2.5 / toNumber(nextValue, 0.6),
-                            },
+                          : { dataUrl: '', widthIn },
                       }));
                     }}
                     className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"

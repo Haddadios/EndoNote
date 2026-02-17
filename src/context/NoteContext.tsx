@@ -1,9 +1,9 @@
-import { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import { createContext, useContext, useReducer, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { NoteData, Template, Preferences, ProcedureDefaults, ToothDiagnosis, CanalMAF, AnesthesiaAmounts, TemplateScope, SavedDraft, ToothTreatmentPlan, ReferralTemplate } from '../types';
+import type { NoteData, Template, Preferences, ProcedureDefaults, ToothDiagnosis, CanalMAF, AnesthesiaAmounts, TemplateScope, SavedDraft, ToothTreatmentPlan, ReferralTemplate, SavedReferralTemplate, StoredData } from '../types';
 import { getToothType } from '../data';
 import { templateScopeFields } from '../utils/templateUtils';
-import { defaultReferralTemplate, normalizeReferralTemplate } from '../utils/referralTemplate';
+import { defaultReferralTemplate, normalizeReferralTemplate, buildUSCReferralTemplate, USC_REFERRAL_TEMPLATE_NAME } from '../utils/referralTemplate';
 
 // Helper to create empty tooth diagnosis
 const createEmptyToothDiagnosis = (toothNumber = ''): ToothDiagnosis => ({
@@ -42,6 +42,9 @@ const initialAnesthesiaAmounts: AnesthesiaAmounts = {
   bupivacaine: '',
   marcaine: '',
 };
+
+const createId = () =>
+  Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
 const normalizeToothDiagnoses = (items?: ToothDiagnosis[], fallbackTooth?: string): ToothDiagnosis[] => {
   if (items && items.length > 0) {
@@ -429,12 +432,136 @@ const initialPreferences: Preferences = {
   defaultsByProcedure: {},
 };
 
+const createDefaultSavedReferralTemplate = (): SavedReferralTemplate => {
+  const now = new Date().toISOString();
+  return {
+    id: createId(),
+    name: 'Default Referral Template',
+    template: normalizeReferralTemplate(defaultReferralTemplate),
+    createdAt: now,
+    updatedAt: now,
+  };
+};
+
+const createUSCSavedReferralTemplate = (): SavedReferralTemplate => {
+  const now = new Date().toISOString();
+  return {
+    id: createId(),
+    name: USC_REFERRAL_TEMPLATE_NAME,
+    template: buildUSCReferralTemplate(),
+    createdAt: now,
+    updatedAt: now,
+  };
+};
+
+const ensureUSCReferralTemplate = (templates: SavedReferralTemplate[]) => {
+  const hasUSC = templates.some(
+    (template) => template.name.trim().toLowerCase() === USC_REFERRAL_TEMPLATE_NAME.toLowerCase()
+  );
+  if (hasUSC) {
+    return templates.map((template) => {
+      if (template.name.trim().toLowerCase() !== USC_REFERRAL_TEMPLATE_NAME.toLowerCase()) {
+        return template;
+      }
+
+      const hasHeaderHeightSet = template.template.headerBlocks.some((block) => block.logo?.heightIn !== undefined);
+      const footerWidth = template.template.footerImage?.widthIn;
+      if (!hasHeaderHeightSet && footerWidth === 0.5) {
+        return template;
+      }
+
+      return {
+        ...template,
+        template: normalizeReferralTemplate({
+          ...template.template,
+          headerBlocks: template.template.headerBlocks.map((block) => ({
+            ...block,
+            logo: block.logo
+              ? {
+                  ...block.logo,
+                  heightIn: undefined,
+                }
+              : undefined,
+          })),
+          footerImage: template.template.footerImage
+            ? {
+                ...template.template.footerImage,
+                widthIn: 0.5,
+              }
+            : template.template.footerImage,
+        }),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+  }
+
+  return [...templates, createUSCSavedReferralTemplate()];
+};
+
+const normalizeSavedReferralTemplate = (
+  saved: Partial<SavedReferralTemplate>,
+  index: number
+): SavedReferralTemplate => {
+  const now = new Date().toISOString();
+  const templateSource = saved.template ?? (saved as Partial<ReferralTemplate>);
+  return {
+    id: saved.id || `referral-template-${index + 1}-${createId()}`,
+    name: saved.name?.trim() || `Referral Template ${index + 1}`,
+    template: normalizeReferralTemplate(templateSource),
+    createdAt: saved.createdAt || now,
+    updatedAt: saved.updatedAt || saved.createdAt || now,
+  };
+};
+
+const normalizeReferralTemplatesState = (storedData?: StoredData) => {
+  const normalizedReferralTemplates = Array.isArray(storedData?.referralTemplates)
+    ? storedData.referralTemplates.map((template, index) =>
+      normalizeSavedReferralTemplate(template as Partial<SavedReferralTemplate>, index)
+    )
+    : [];
+
+  if (normalizedReferralTemplates.length > 0) {
+    const templatesWithUSC = ensureUSCReferralTemplate(normalizedReferralTemplates);
+    const activeIdFromStorage = storedData?.activeReferralTemplateId;
+    const activeTemplate = templatesWithUSC.find((template) => template.id === activeIdFromStorage);
+    return {
+      referralTemplates: templatesWithUSC,
+      activeReferralTemplateId: activeTemplate ? activeTemplate.id : templatesWithUSC[0].id,
+    };
+  }
+
+  if (storedData?.referralTemplate) {
+    const now = new Date().toISOString();
+    const migratedTemplate: SavedReferralTemplate = {
+      id: createId(),
+      name: 'Migrated Referral Template',
+      template: normalizeReferralTemplate(storedData.referralTemplate),
+      createdAt: now,
+      updatedAt: now,
+    };
+    const templatesWithUSC = ensureUSCReferralTemplate([migratedTemplate]);
+    return {
+      referralTemplates: templatesWithUSC,
+      activeReferralTemplateId: migratedTemplate.id,
+    };
+  }
+
+  const uscTemplate = createUSCSavedReferralTemplate();
+  const defaultTemplate = createDefaultSavedReferralTemplate();
+  const templatesWithUSC = ensureUSCReferralTemplate([uscTemplate, defaultTemplate]);
+  return {
+    referralTemplates: templatesWithUSC,
+    activeReferralTemplateId: uscTemplate.id,
+  };
+};
+
 interface State {
   noteData: NoteData;
   templates: Template[];
   preferences: Preferences;
   savedDrafts: SavedDraft[];
-  referralTemplate: ReferralTemplate;
+  referralTemplates: SavedReferralTemplate[];
+  activeReferralTemplateId: string;
 }
 
 type Action =
@@ -455,7 +582,11 @@ type Action =
   | { type: 'RENAME_TEMPLATE'; id: string; name: string }
   | { type: 'DELETE_TEMPLATE'; id: string }
   | { type: 'UPDATE_PREFERENCES'; preferences: Partial<Preferences> }
-  | { type: 'UPDATE_REFERRAL_TEMPLATE'; template: ReferralTemplate }
+  | { type: 'UPDATE_ACTIVE_REFERRAL_TEMPLATE'; template: ReferralTemplate }
+  | { type: 'SAVE_REFERRAL_TEMPLATE'; template: SavedReferralTemplate }
+  | { type: 'RENAME_REFERRAL_TEMPLATE'; id: string; name: string }
+  | { type: 'DELETE_REFERRAL_TEMPLATE'; id: string }
+  | { type: 'SET_ACTIVE_REFERRAL_TEMPLATE'; id: string }
   | { type: 'LOAD_STATE'; state: Partial<State> }
   | { type: 'ADD_SAVED_DRAFT'; draft: SavedDraft }
   | { type: 'DELETE_SAVED_DRAFT'; id: string };
@@ -744,10 +875,72 @@ function reducer(state: State, action: Action): State {
           ...action.preferences,
         },
       };
-    case 'UPDATE_REFERRAL_TEMPLATE':
+    case 'UPDATE_ACTIVE_REFERRAL_TEMPLATE':
       return {
         ...state,
-        referralTemplate: action.template,
+        referralTemplates: state.referralTemplates.map((savedTemplate) =>
+          savedTemplate.id === state.activeReferralTemplateId
+            ? {
+                ...savedTemplate,
+                template: action.template,
+                updatedAt: new Date().toISOString(),
+              }
+            : savedTemplate
+        ),
+      };
+
+    case 'SAVE_REFERRAL_TEMPLATE': {
+      const existingIndex = state.referralTemplates.findIndex((template) => template.id === action.template.id);
+      if (existingIndex >= 0) {
+        const updated = [...state.referralTemplates];
+        updated[existingIndex] = action.template;
+        return {
+          ...state,
+          referralTemplates: updated,
+          activeReferralTemplateId: action.template.id,
+        };
+      }
+
+      return {
+        ...state,
+        referralTemplates: [...state.referralTemplates, action.template],
+        activeReferralTemplateId: action.template.id,
+      };
+    }
+
+    case 'RENAME_REFERRAL_TEMPLATE':
+      return {
+        ...state,
+        referralTemplates: state.referralTemplates.map((template) =>
+          template.id === action.id
+            ? { ...template, name: action.name, updatedAt: new Date().toISOString() }
+            : template
+        ),
+      };
+
+    case 'DELETE_REFERRAL_TEMPLATE': {
+      if (state.referralTemplates.length <= 1) {
+        return state;
+      }
+
+      const nextTemplates = state.referralTemplates.filter((template) => template.id !== action.id);
+      const activeStillExists = nextTemplates.some((template) => template.id === state.activeReferralTemplateId);
+      return {
+        ...state,
+        referralTemplates: nextTemplates,
+        activeReferralTemplateId: activeStillExists
+          ? state.activeReferralTemplateId
+          : nextTemplates[0].id,
+      };
+    }
+
+    case 'SET_ACTIVE_REFERRAL_TEMPLATE':
+      if (!state.referralTemplates.some((template) => template.id === action.id)) {
+        return state;
+      }
+      return {
+        ...state,
+        activeReferralTemplateId: action.id,
       };
 
     case 'LOAD_STATE':
@@ -781,6 +974,8 @@ interface NoteContextType {
   templates: Template[];
   preferences: Preferences;
   savedDrafts: SavedDraft[];
+  referralTemplates: SavedReferralTemplate[];
+  activeReferralTemplateId: string;
   referralTemplate: ReferralTemplate;
   noteOutputDraft: string | null;
   referralOutputDraft: string | null;
@@ -813,6 +1008,10 @@ interface NoteContextType {
   deleteTemplate: (id: string) => void;
   updatePreferences: (prefs: Partial<Preferences>) => void;
   updateReferralTemplate: (template: ReferralTemplate) => void;
+  setActiveReferralTemplate: (id: string) => void;
+  saveReferralTemplateAs: (name: string) => string;
+  renameReferralTemplate: (id: string, name: string) => void;
+  deleteReferralTemplate: (id: string) => void;
 }
 
 const NoteContext = createContext<NoteContextType | null>(null);
@@ -898,30 +1097,40 @@ const generateDraftPreview = (noteData: NoteData): string => {
 };
 
 export function NoteProvider({ children }: { children: ReactNode }) {
+  const initialReferralTemplateState = useMemo(() => normalizeReferralTemplatesState(), []);
   const [state, dispatch] = useReducer(reducer, {
     noteData: { ...initialNoteData, toothDiagnoses: [createEmptyToothDiagnosis()] },
     templates: [],
     preferences: initialPreferences,
     savedDrafts: [],
-    referralTemplate: defaultReferralTemplate,
+    referralTemplates: initialReferralTemplateState.referralTemplates,
+    activeReferralTemplateId: initialReferralTemplateState.activeReferralTemplateId,
   });
   const [outputEdits, setOutputEdits] = useState<OutputEdits>(initialOutputEdits);
   const [pendingDraft, setPendingDraft] = useState<NoteData | null>(null);
   const [pendingOutputEdits, setPendingOutputEdits] = useState<OutputEdits | null>(null);
   const [isDraftResolved, setIsDraftResolved] = useState(false);
+  const activeReferralTemplateRecord = useMemo(
+    () =>
+      state.referralTemplates.find(
+        (template) => template.id === state.activeReferralTemplateId
+      ) ?? state.referralTemplates[0],
+    [state.referralTemplates, state.activeReferralTemplateId]
+  );
+  const activeReferralTemplate = activeReferralTemplateRecord?.template ?? normalizeReferralTemplate(defaultReferralTemplate);
 
   // Load from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        const parsed = JSON.parse(stored);
+        const parsed = JSON.parse(stored) as StoredData;
         const normalizedTemplates = Array.isArray(parsed.templates)
           ? parsed.templates.map((template: Partial<Template>) => normalizeTemplate(template))
           : [];
         const savedDrafts = Array.isArray(parsed.savedDrafts) ? parsed.savedDrafts : [];
         const storedNoteData = parsed.noteData ? normalizeNoteData(parsed.noteData) : undefined;
-        const storedReferralTemplate = normalizeReferralTemplate(parsed.referralTemplate);
+        const referralTemplatesState = normalizeReferralTemplatesState(parsed);
         const storedOutputEdits = normalizeOutputEdits(parsed.outputEdits);
         const hasStoredOutputEdits = Boolean(storedOutputEdits.noteText || storedOutputEdits.referralText);
         dispatch({
@@ -930,7 +1139,8 @@ export function NoteProvider({ children }: { children: ReactNode }) {
             templates: normalizedTemplates,
             preferences: { ...initialPreferences, ...parsed.preferences },
             savedDrafts,
-            referralTemplate: storedReferralTemplate,
+            referralTemplates: referralTemplatesState.referralTemplates,
+            activeReferralTemplateId: referralTemplatesState.activeReferralTemplateId,
           },
         });
         if ((storedNoteData && hasDraftContent(storedNoteData)) || hasStoredOutputEdits) {
@@ -958,12 +1168,24 @@ export function NoteProvider({ children }: { children: ReactNode }) {
       templates: state.templates,
       preferences: state.preferences,
       noteData: state.noteData,
-      referralTemplate: state.referralTemplate,
+      referralTemplate: activeReferralTemplate, // legacy single-template compatibility
+      referralTemplates: state.referralTemplates,
+      activeReferralTemplateId: state.activeReferralTemplateId,
       outputEdits,
       savedDrafts: state.savedDrafts,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore));
-  }, [state.templates, state.preferences, state.noteData, outputEdits, state.savedDrafts, isDraftResolved]);
+  }, [
+    state.templates,
+    state.preferences,
+    state.noteData,
+    state.referralTemplates,
+    state.activeReferralTemplateId,
+    activeReferralTemplate,
+    outputEdits,
+    state.savedDrafts,
+    isDraftResolved,
+  ]);
 
   // Apply dark mode class to document
   useEffect(() => {
@@ -1057,7 +1279,32 @@ export function NoteProvider({ children }: { children: ReactNode }) {
   };
 
   const updateReferralTemplate = (template: ReferralTemplate) => {
-    dispatch({ type: 'UPDATE_REFERRAL_TEMPLATE', template });
+    dispatch({ type: 'UPDATE_ACTIVE_REFERRAL_TEMPLATE', template: normalizeReferralTemplate(template) });
+  };
+
+  const setActiveReferralTemplate = (id: string) => {
+    dispatch({ type: 'SET_ACTIVE_REFERRAL_TEMPLATE', id });
+  };
+
+  const saveReferralTemplateAs = (name: string) => {
+    const now = new Date().toISOString();
+    const savedTemplate: SavedReferralTemplate = {
+      id: createId(),
+      name,
+      template: cloneValue(activeReferralTemplate),
+      createdAt: now,
+      updatedAt: now,
+    };
+    dispatch({ type: 'SAVE_REFERRAL_TEMPLATE', template: savedTemplate });
+    return savedTemplate.id;
+  };
+
+  const renameReferralTemplate = (id: string, name: string) => {
+    dispatch({ type: 'RENAME_REFERRAL_TEMPLATE', id, name });
+  };
+
+  const deleteReferralTemplate = (id: string) => {
+    dispatch({ type: 'DELETE_REFERRAL_TEMPLATE', id });
   };
 
   const restoreDraft = () => {
@@ -1076,7 +1323,9 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     const dataToStore = {
       templates: state.templates,
       preferences: state.preferences,
-      referralTemplate: state.referralTemplate,
+      referralTemplate: activeReferralTemplate,
+      referralTemplates: state.referralTemplates,
+      activeReferralTemplateId: state.activeReferralTemplateId,
       savedDrafts: state.savedDrafts,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore));
@@ -1149,7 +1398,9 @@ export function NoteProvider({ children }: { children: ReactNode }) {
         templates: state.templates,
         preferences: state.preferences,
         savedDrafts: state.savedDrafts,
-        referralTemplate: state.referralTemplate,
+        referralTemplates: state.referralTemplates,
+        activeReferralTemplateId: state.activeReferralTemplateId,
+        referralTemplate: activeReferralTemplate,
         noteOutputDraft: outputEdits.noteText,
         referralOutputDraft: outputEdits.referralText,
         hasPendingDraft,
@@ -1181,6 +1432,10 @@ export function NoteProvider({ children }: { children: ReactNode }) {
         deleteTemplate,
         updatePreferences,
         updateReferralTemplate,
+        setActiveReferralTemplate,
+        saveReferralTemplateAs,
+        renameReferralTemplate,
+        deleteReferralTemplate,
       }}
     >
       {children}

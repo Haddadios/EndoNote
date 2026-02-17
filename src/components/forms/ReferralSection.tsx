@@ -3,7 +3,15 @@ import { useNote } from '../../context/NoteContext';
 import { TextInput } from '../common';
 
 export function ReferralSection() {
-  const { noteData, updateField, referralTemplate, updateReferralTemplate } = useNote();
+  const {
+    noteData,
+    updateField,
+    referralTemplate,
+    updateReferralTemplate,
+    referralTemplates,
+    activeReferralTemplateId,
+    setActiveReferralTemplate,
+  } = useNote();
   const [clearedState, setClearedState] = useState<{
     patientName: string;
     patientChartNumber: string;
@@ -66,6 +74,23 @@ export function ReferralSection() {
         >
           Clear Section
         </button>
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Referral Template
+        </label>
+        <select
+          value={activeReferralTemplateId}
+          onChange={(e) => setActiveReferralTemplate(e.target.value)}
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+        >
+          {referralTemplates.map((template) => (
+            <option key={template.id} value={template.id}>
+              {template.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {showUndo && (

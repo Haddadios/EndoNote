@@ -268,6 +268,14 @@ export interface ReferralTemplate {
   };
 }
 
+export interface SavedReferralTemplate {
+  id: string;
+  name: string;
+  template: ReferralTemplate;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ApicalMicrosurgerySteps {
   rootsTreated: string;
   flapDesign: string;
@@ -372,6 +380,9 @@ export interface SavedDraft {
 export interface StoredData {
   templates: Template[];
   preferences: Preferences;
+  referralTemplate?: ReferralTemplate; // legacy single-template field
+  referralTemplates?: SavedReferralTemplate[];
+  activeReferralTemplateId?: string;
   noteData?: NoteData;
   outputEdits?: {
     noteText?: string | null;

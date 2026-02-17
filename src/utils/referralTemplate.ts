@@ -1,4 +1,6 @@
 import type { ReferralTemplate } from '../types';
+import uscHeaderLogo from '../../USCHeader.png?inline';
+import uscFooterLogo from '../../USCFooter.png?inline';
 
 export const defaultReferralTemplate: ReferralTemplate = {
   page: {
@@ -55,6 +57,42 @@ export const defaultReferralTemplate: ReferralTemplate = {
     lines: ['Sincerely,', ''],
   },
 };
+
+export const USC_REFERRAL_TEMPLATE_NAME = 'USC Advanced Endodontics';
+
+export const buildUSCReferralTemplate = (): ReferralTemplate =>
+  normalizeReferralTemplate({
+    ...defaultReferralTemplate,
+    headerLayout: 'logo_left_text_right',
+    headerBlocks: [
+      {
+        id: 'usc-header-1',
+        enabled: true,
+        text: 'Dr.\nAdvanced Endodontics\nUniversity of Southern California',
+        align: 'right',
+        logo: {
+          dataUrl: uscHeaderLogo,
+          widthIn: 3,
+        },
+      },
+    ],
+    footer: {
+      enabled: true,
+      align: 'center',
+      text:
+        'University of Southern California\n925 West 34th Street, Los Angeles, California 90089  •  Tel: 213 740 1545  •  Fax: 213 740 7064',
+    },
+    footerImage: {
+      dataUrl: uscFooterLogo,
+      widthIn: 0.5,
+      align: 'center',
+    },
+    footerImagePlacement: 'above_text',
+    signature: {
+      enabled: true,
+      lines: ['Sincerely,', 'Dr.', 'USC Advanced Endodontics'],
+    },
+  });
 
 export const normalizeReferralTemplate = (template?: Partial<ReferralTemplate>): ReferralTemplate => {
   const hasHeaderBlocks = Array.isArray(template?.headerBlocks);
