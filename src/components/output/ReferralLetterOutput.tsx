@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNote } from '../../context/NoteContext';
 import { CopyButton } from '../common';
 import { generateReferralLetter } from '../../utils/referralLetterGenerator';
+import { buildReferralDocx } from '../../utils/referralDocx';
+import { saveAs } from 'file-saver';
 
 export function ReferralLetterOutput() {
-  const { noteData, referralOutputDraft, setReferralOutputDraft } = useNote();
+  const { noteData, referralTemplate, referralOutputDraft, setReferralOutputDraft } = useNote();
 
   const letter = useMemo(() => generateReferralLetter(noteData), [noteData]);
   const [letterText, setLetterText] = useState(referralOutputDraft ?? letter);
@@ -66,6 +68,16 @@ export function ReferralLetterOutput() {
     setReferralOutputDraft(null);
   };
 
+  const handleDownloadDocx = async () => {
+    try {
+      const blob = await buildReferralDocx(noteData, referralTemplate);
+      const patientName = noteData.patientName ? noteData.patientName.replace(/\s+/g, '_') : 'referral';
+      saveAs(blob, `${patientName}_referral_letter.docx`);
+    } catch (err) {
+      console.error('Failed to generate referral .docx', err);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="sticky top-0 z-10 -mx-4 px-4 py-3 mb-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -103,6 +115,13 @@ export function ReferralLetterOutput() {
             className="text-xs px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
           >
             {isEditing ? 'Done Editing' : 'Edit Letter'}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadDocx}
+            className="text-xs px-3 py-1 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+          >
+            Download .docx
           </button>
           <CopyButton text={letterText} />
         </div>

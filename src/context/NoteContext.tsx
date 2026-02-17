@@ -1,8 +1,9 @@
 import { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { NoteData, Template, Preferences, ProcedureDefaults, ToothDiagnosis, CanalMAF, AnesthesiaAmounts, TemplateScope, SavedDraft, ToothTreatmentPlan } from '../types';
+import type { NoteData, Template, Preferences, ProcedureDefaults, ToothDiagnosis, CanalMAF, AnesthesiaAmounts, TemplateScope, SavedDraft, ToothTreatmentPlan, ReferralTemplate } from '../types';
 import { getToothType } from '../data';
 import { templateScopeFields } from '../utils/templateUtils';
+import { defaultReferralTemplate, normalizeReferralTemplate } from '../utils/referralTemplate';
 
 // Helper to create empty tooth diagnosis
 const createEmptyToothDiagnosis = (toothNumber = ''): ToothDiagnosis => ({
@@ -141,6 +142,7 @@ const hasDraftContent = (data: NoteData): boolean => {
     data.mobility.length > 0 ||
     data.swelling.length > 0 ||
     data.radiographicFindings.length > 0 ||
+    data.referralRadiographs.length > 0 ||
     data.anesthesiaLocations.length > 0 ||
     data.canalConfiguration.length > 0 ||
     data.customCanalNames.some((name) => hasNonEmptyString(name)) ||
@@ -284,6 +286,7 @@ const initialNoteData: NoteData = {
   treatmentPerformed: '',
   temporizedWith: '',
   referralComments: '',
+  referralRadiographs: [],
 
   // Plan
   treatmentComments: '',
@@ -319,6 +322,10 @@ const initialNoteData: NoteData = {
 
 const normalizeNoteData = (data?: Partial<NoteData>): NoteData => {
   const merged = { ...initialNoteData, ...data };
+
+  if (!Array.isArray(merged.referralRadiographs)) {
+    merged.referralRadiographs = [];
+  }
 
   // Migration: If toothTreatmentPlans is empty but legacy fields have data, migrate to new structure
   let treatmentPlans = normalizeToothTreatmentPlans(data?.toothTreatmentPlans);
@@ -427,6 +434,7 @@ interface State {
   templates: Template[];
   preferences: Preferences;
   savedDrafts: SavedDraft[];
+  referralTemplate: ReferralTemplate;
 }
 
 type Action =
@@ -447,6 +455,7 @@ type Action =
   | { type: 'RENAME_TEMPLATE'; id: string; name: string }
   | { type: 'DELETE_TEMPLATE'; id: string }
   | { type: 'UPDATE_PREFERENCES'; preferences: Partial<Preferences> }
+  | { type: 'UPDATE_REFERRAL_TEMPLATE'; template: ReferralTemplate }
   | { type: 'LOAD_STATE'; state: Partial<State> }
   | { type: 'ADD_SAVED_DRAFT'; draft: SavedDraft }
   | { type: 'DELETE_SAVED_DRAFT'; id: string };
@@ -735,6 +744,11 @@ function reducer(state: State, action: Action): State {
           ...action.preferences,
         },
       };
+    case 'UPDATE_REFERRAL_TEMPLATE':
+      return {
+        ...state,
+        referralTemplate: action.template,
+      };
 
     case 'LOAD_STATE':
       return {
@@ -767,6 +781,7 @@ interface NoteContextType {
   templates: Template[];
   preferences: Preferences;
   savedDrafts: SavedDraft[];
+  referralTemplate: ReferralTemplate;
   noteOutputDraft: string | null;
   referralOutputDraft: string | null;
   hasPendingDraft: boolean;
@@ -797,6 +812,7 @@ interface NoteContextType {
   renameTemplate: (id: string, name: string) => void;
   deleteTemplate: (id: string) => void;
   updatePreferences: (prefs: Partial<Preferences>) => void;
+  updateReferralTemplate: (template: ReferralTemplate) => void;
 }
 
 const NoteContext = createContext<NoteContextType | null>(null);
@@ -887,6 +903,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     templates: [],
     preferences: initialPreferences,
     savedDrafts: [],
+    referralTemplate: defaultReferralTemplate,
   });
   const [outputEdits, setOutputEdits] = useState<OutputEdits>(initialOutputEdits);
   const [pendingDraft, setPendingDraft] = useState<NoteData | null>(null);
@@ -904,6 +921,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
           : [];
         const savedDrafts = Array.isArray(parsed.savedDrafts) ? parsed.savedDrafts : [];
         const storedNoteData = parsed.noteData ? normalizeNoteData(parsed.noteData) : undefined;
+        const storedReferralTemplate = normalizeReferralTemplate(parsed.referralTemplate);
         const storedOutputEdits = normalizeOutputEdits(parsed.outputEdits);
         const hasStoredOutputEdits = Boolean(storedOutputEdits.noteText || storedOutputEdits.referralText);
         dispatch({
@@ -912,6 +930,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
             templates: normalizedTemplates,
             preferences: { ...initialPreferences, ...parsed.preferences },
             savedDrafts,
+            referralTemplate: storedReferralTemplate,
           },
         });
         if ((storedNoteData && hasDraftContent(storedNoteData)) || hasStoredOutputEdits) {
@@ -939,6 +958,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
       templates: state.templates,
       preferences: state.preferences,
       noteData: state.noteData,
+      referralTemplate: state.referralTemplate,
       outputEdits,
       savedDrafts: state.savedDrafts,
     };
@@ -1036,6 +1056,10 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_PREFERENCES', preferences: prefs });
   };
 
+  const updateReferralTemplate = (template: ReferralTemplate) => {
+    dispatch({ type: 'UPDATE_REFERRAL_TEMPLATE', template });
+  };
+
   const restoreDraft = () => {
     if (pendingDraft) {
       dispatch({ type: 'LOAD_STATE', state: { noteData: pendingDraft } });
@@ -1052,6 +1076,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
     const dataToStore = {
       templates: state.templates,
       preferences: state.preferences,
+      referralTemplate: state.referralTemplate,
       savedDrafts: state.savedDrafts,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore));
@@ -1124,6 +1149,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
         templates: state.templates,
         preferences: state.preferences,
         savedDrafts: state.savedDrafts,
+        referralTemplate: state.referralTemplate,
         noteOutputDraft: outputEdits.noteText,
         referralOutputDraft: outputEdits.referralText,
         hasPendingDraft,
@@ -1154,6 +1180,7 @@ export function NoteProvider({ children }: { children: ReactNode }) {
         renameTemplate,
         deleteTemplate,
         updatePreferences,
+        updateReferralTemplate,
       }}
     >
       {children}

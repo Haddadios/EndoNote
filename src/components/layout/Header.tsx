@@ -6,7 +6,15 @@ import { SettingsPanel } from './SettingsPanel';
 import { convertToothNumber } from '../../data';
 import type { ToothNotation } from '../../types';
 
-export function Header() {
+type TopTab = 'note' | 'referralTemplate';
+
+export function Header({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: TopTab;
+  onTabChange: (tab: TopTab) => void;
+}) {
   const { noteData, preferences, updatePreferences, hasSavedDraft, clearSavedDraft, clearDraftAndReset, saveDraftToHistory, resetForm, updateTooth, updateToothDiagnosis } = useNote();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -35,15 +43,16 @@ export function Header() {
     <>
     <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">EN</span>
             </div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">EndoNote</h1>
           </div>
 
-          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
               <span>Tooth Notation:</span>
               <select
@@ -126,6 +135,32 @@ export function Header() {
             </button>
           </div>
         </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onTabChange('note')}
+              className={
+                activeTab === 'note'
+                  ? 'px-3 py-1.5 text-xs font-semibold rounded-full bg-blue-600 text-white'
+                  : 'px-3 py-1.5 text-xs font-medium rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700'
+              }
+            >
+              Note Builder
+            </button>
+            <button
+              type="button"
+              onClick={() => onTabChange('referralTemplate')}
+              className={
+                activeTab === 'referralTemplate'
+                  ? 'px-3 py-1.5 text-xs font-semibold rounded-full bg-blue-600 text-white'
+                  : 'px-3 py-1.5 text-xs font-medium rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700'
+              }
+            >
+              Referral Template
+            </button>
+          </div>
       </div>
     </header>
 

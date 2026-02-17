@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NoteProvider } from './context/NoteContext';
 import { DraftBanner, Header, SectionNav } from './components/layout';
 import {
@@ -6,47 +7,63 @@ import {
   AssessmentSection,
   PlanSection,
   ReferralSection,
+  ReferralTemplateSection,
 } from './components/forms';
 import { NoteOutput, ReferralLetterOutput } from './components/output';
 
 function App() {
+  const [activeTab, setActiveTab] = useState<'note' | 'referralTemplate'>(() => {
+    const stored = localStorage.getItem('endonote_active_tab');
+    return stored === 'referralTemplate' ? 'referralTemplate' : 'note';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('endonote_active_tab', activeTab);
+  }, [activeTab]);
+
   return (
     <NoteProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header />
+        <Header activeTab={activeTab} onTabChange={setActiveTab} />
         <DraftBanner />
 
-        <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Form Sections (2/3 width) */}
-            <div className="lg:col-span-2 space-y-6">
-              <SectionNav />
-              <div id="subjective" className="scroll-mt-24">
-                <SubjectiveSection />
-              </div>
-              <div id="objective" className="scroll-mt-24">
-                <ObjectiveSection />
-              </div>
-              <div id="assessment" className="scroll-mt-24">
-                <AssessmentSection />
-              </div>
-              <div id="plan" className="scroll-mt-24">
-                <PlanSection />
-              </div>
-            </div>
-
-            {/* Right Column - Output (1/3 width) */}
-            <div className="lg:col-span-1">
-              <div className="lg:sticky lg:top-8 space-y-6">
-                <NoteOutput />
-                <div id="referral" className="scroll-mt-24">
-                  <ReferralSection />
+        {activeTab === 'note' ? (
+          <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column - Form Sections (2/3 width) */}
+              <div className="lg:col-span-2 space-y-6">
+                <SectionNav />
+                <div id="subjective" className="scroll-mt-24">
+                  <SubjectiveSection />
                 </div>
-                <ReferralLetterOutput />
+                <div id="objective" className="scroll-mt-24">
+                  <ObjectiveSection />
+                </div>
+                <div id="assessment" className="scroll-mt-24">
+                  <AssessmentSection />
+                </div>
+                <div id="plan" className="scroll-mt-24">
+                  <PlanSection />
+                </div>
+              </div>
+
+              {/* Right Column - Output (1/3 width) */}
+              <div className="lg:col-span-1">
+                <div className="lg:sticky lg:top-8 space-y-6">
+                  <NoteOutput />
+                  <div id="referral" className="scroll-mt-24">
+                    <ReferralSection />
+                  </div>
+                  <ReferralLetterOutput />
+                </div>
               </div>
             </div>
-          </div>
-        </main>
+          </main>
+        ) : (
+          <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <ReferralTemplateSection />
+          </main>
+        )}
 
         <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

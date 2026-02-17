@@ -155,6 +155,7 @@ export interface NoteData {
   treatmentPerformed: string;
   temporizedWith: string;
   referralComments: string;
+  referralRadiographs: string[];
 
   // Plan
   treatmentComments: string;
@@ -197,6 +198,73 @@ export interface Template {
   toothType?: ToothType | 'any';
   procedureTypes?: string[] | 'any';
   createdAt: string;
+}
+
+export type ReferralRadiographPlacement = 'after_completion' | 'before_comments' | 'end';
+
+export interface ReferralTemplateImage {
+  dataUrl: string;
+  widthIn: number;
+  heightIn?: number;
+  aspectRatio?: number;
+}
+
+export type ReferralTemplateHeaderLayout = 'single_column' | 'logo_left_text_right' | 'stacked_center';
+
+export interface ReferralTemplateHeaderBlock {
+  id: string;
+  enabled: boolean;
+  text: string;
+  align: 'left' | 'center' | 'right';
+  logo?: ReferralTemplateImage;
+}
+
+export interface ReferralTemplateFooterImage extends ReferralTemplateImage {
+  align: 'left' | 'center' | 'right';
+}
+
+export type ReferralTemplateFooterImagePlacement = 'above_text' | 'below_text';
+
+export interface ReferralTemplate {
+  page: {
+    marginsIn: {
+      top: number;
+      right: number;
+      bottom: number;
+      left: number;
+    };
+  };
+  headerFontSizePt: number;
+  footerFontSizePt: number;
+  bodyFontSizePt: number;
+  headerLayout: ReferralTemplateHeaderLayout;
+  headerBlocks: ReferralTemplateHeaderBlock[];
+  header: {
+    enabled: boolean;
+    text: string;
+    align: 'left' | 'center' | 'right';
+    logo?: ReferralTemplateImage;
+  };
+  footer: {
+    enabled: boolean;
+    text: string;
+    align: 'left' | 'center' | 'right';
+  };
+  footerImage?: ReferralTemplateFooterImage;
+  footerImagePlacement: ReferralTemplateFooterImagePlacement;
+  radiographs: {
+    enabled: boolean;
+    placement: ReferralRadiographPlacement;
+    slots: number;
+    columns: number;
+    slotWidthIn: number;
+    slotHeightIn: number;
+  };
+  signature: {
+    enabled: boolean;
+    lines: string[];
+    image?: ReferralTemplateImage;
+  };
 }
 
 export interface ApicalMicrosurgerySteps {

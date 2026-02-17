@@ -441,9 +441,40 @@ export function generateSOAPNote(data: NoteData, carpuleVolumeMl: number = 1.8):
     }
 
     // Swelling
-    if (data.swelling.length > 0 && !data.swelling.includes('none')) {
-      const swellingLabels = getLabels(swellingOptions, data.swelling);
-      lines.push(`Swelling: ${joinList(swellingLabels)}`);
+    if (data.swelling.length > 0) {
+      const hasNone = data.swelling.includes('none');
+      if (hasNone) {
+        lines.push('Swelling: none visible.');
+      }
+
+      const descriptorOrder = [
+        'localized',
+        'diffuse',
+        'fluctuant',
+        'firm',
+        'buccal',
+        'lingual',
+        'palatal',
+        'drainage_sulcus',
+      ];
+      const descriptorValues = data.swelling
+        .filter((v) => !['none', 'sinus_tract'].includes(v))
+        .sort((a, b) => {
+          const ai = descriptorOrder.indexOf(a);
+          const bi = descriptorOrder.indexOf(b);
+          if (ai === -1 && bi === -1) return 0;
+          if (ai === -1) return 1;
+          if (bi === -1) return -1;
+          return ai - bi;
+        });
+      if (descriptorValues.length > 0) {
+        const descriptorLabels = getLabels(swellingOptions, descriptorValues);
+        lines.push(`Swelling: ${joinList(descriptorLabels)}`);
+      }
+
+      if (data.swelling.includes('sinus_tract')) {
+        lines.push('Sinus tract: present.');
+      }
     }
 
     // Sinus tract (legacy support - if stored as separate field)

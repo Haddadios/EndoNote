@@ -33,7 +33,22 @@ const findLabel = (options: { value: string; label: string }[], value?: string) 
 const RCT_TYPES = new Set(['initial_rct', 'continuing_rct', 'ns_rerct']);
 const noTreatmentValues = new Set(['no_treatment', 'no_treatment_monitoring', 'extraction', 'other']);
 
-export function generateReferralLetter(noteData: NoteData) {
+const getCurrentDate = () => {
+  const today = new Date();
+  return today.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+};
+
+export interface ReferralBlocks {
+  patientMeta: string[];
+  introParagraph: string;
+  toothAreaLine: string;
+  consultationLines: string[];
+  completionLines: string[];
+  comments: string;
+  closing: string;
+}
+
+export function buildReferralBlocks(noteData: NoteData): ReferralBlocks {
   // Collect all teeth from diagnoses
   const diagnosedTeeth = noteData.toothDiagnoses
     .filter((d) => d.toothNumber)
@@ -67,12 +82,6 @@ export function generateReferralLetter(noteData: NoteData) {
     '';
 
   const hasTreatmentSelected = Boolean(selectedTreatmentValue) && !noTreatmentValues.has(selectedTreatmentValue);
-
-  // Default to current date in format: "MM/DD/YYYY"
-  const getCurrentDate = () => {
-    const today = new Date();
-    return today.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  };
 
   const letterDate = noteData.referralLetterDate || getCurrentDate();
   const consultationDate = noteData.consultationDate || placeholderDate;
@@ -218,13 +227,10 @@ export function generateReferralLetter(noteData: NoteData) {
       }
       if (s.splintType) lines.push(`${indent}Splint: ${findLabel(splintTypes, s.splintType)}${s.splintDurationWeeks ? ` for ${s.splintDurationWeeks} weeks` : ''}`);
       if (s.replantationNotes) lines.push(`${indent}Notes: ${s.replantationNotes}`);
-
     } else if (treatmentType === 'autotransplantation' && ps.autotransplantation) {
       const s = ps.autotransplantation;
-      if (s.donorTooth) lines.push(`${indent}Donor Tooth: ${s.donorTooth}`);
-      if (s.recipientSite) lines.push(`${indent}Recipient Site: ${s.recipientSite}`);
+      if (s.rctPlan) lines.push(`${indent}Rct Plan: ${findLabel(replantRctPlan, s.rctPlan)}`);
       if (s.rootDevStage) lines.push(`${indent}Root Development Stage: ${findLabel(rootDevStages, s.rootDevStage)}`);
-      if (s.rctPlan) lines.push(`${indent}RCT Plan: ${findLabel(replantRctPlan, s.rctPlan)}`);
       if (s.splintType) lines.push(`${indent}Splint: ${findLabel(splintTypes, s.splintType)}${s.splintDurationWeeks ? ` for ${s.splintDurationWeeks} weeks` : ''}`);
       if (s.autotransplantNotes) lines.push(`${indent}Notes: ${s.autotransplantNotes}`);
     }
@@ -232,51 +238,35 @@ export function generateReferralLetter(noteData: NoteData) {
     return lines;
   };
 
-  // Build treatment completion section
-  let completionSection: string[] = [];
-
+  // Completion section
+  const completionSection: string[] = [];
   if (hasTreatmentSelected) {
     completionSection.push(`Treatment Completion Date: ${completionDate}`);
 
-    if (noteData.toothTreatmentPlans && noteData.toothTreatmentPlans.length > 0) {
-      // Determine overall treatment label (first performed across all plans)
-      const _allPerformed = noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? []);
-      const planSelectedTreatment = _allPerformed[0]
-        ? treatmentLabels[_allPerformed[0] as keyof typeof treatmentLabels]
-        : '';
-      const treatmentPerformedLabel = treatmentLabels[noteData.treatmentPerformed as keyof typeof treatmentLabels];
-      const treatmentPerformed = treatmentPerformedLabel || planSelectedTreatment || placeholderItem;
-
-      completionSection.push(`  Treatment Performed: ${treatmentPerformed}`);
-      completionSection.push('');
-
+    // Multi-tooth plans
+    if ((noteData.toothTreatmentPlans || []).length > 0) {
       noteData.toothTreatmentPlans.forEach((plan) => {
-        if (!plan.toothNumber) return;
-        completionSection.push(`  Tooth #${plan.toothNumber}:`);
+        if (plan.toothNumber) {
+          completionSection.push(`  Tooth #${plan.toothNumber}:`);
+          const planSelectedTreatment = (plan.treatmentPerformed ?? [])[0]
+            ? treatmentLabels[(plan.treatmentPerformed ?? [])[0] as keyof typeof treatmentLabels]
+            : '';
+          const recommendedTreatmentLabel = treatmentLabels[(primaryDiagnosis?.treatmentOptionsOffered ?? [])[0] as keyof typeof treatmentLabels];
+          const treatmentPerformed = planSelectedTreatment || recommendedTreatmentLabel || placeholderItem;
+          completionSection.push(`    Treatment Performed: ${treatmentPerformed}`);
 
-        const performed = plan.treatmentPerformed ?? [];
-        if (performed.length === 0) {
-          // No treatment type recorded
-        } else {
-          performed.forEach((treatmentType) => {
-            const typeLabel = treatmentLabels[treatmentType as keyof typeof treatmentLabels] || treatmentType;
-            completionSection.push(`    ${typeLabel}`);
-            const details = buildTreatmentDetailLines(treatmentType, plan, '      ');
-            completionSection.push(...details);
-          });
-        }
+          const detailLines = buildTreatmentDetailLines((plan.treatmentPerformed ?? [])[0], plan, '    ');
+          completionSection.push(...detailLines);
 
-        const temporizedWith = findLabel(restorationTypes, plan.restoration);
-        if (temporizedWith && !performed.some((t) => RCT_TYPES.has(t))) {
-          // Only show restoration line here for non-RCT (RCT already emits it inside the detail block)
-          completionSection.push(`    Temporized/Restored with: ${temporizedWith}`);
+          if (!RCT_TYPES.has((plan.treatmentPerformed ?? [])[0] || '')) {
+            const temporizedWith = findLabel(restorationTypes, plan.restoration) || placeholderItem;
+            completionSection.push(`    Temporized/Restored with: ${temporizedWith}`);
+          }
         }
       });
 
-      completionSection.push('');
       completionSection.push(`  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`);
     } else {
-      // Legacy single-tooth format
       const _legacyPerformed = noteData.toothTreatmentPlans.flatMap((p) => p.treatmentPerformed ?? []);
       const planSelectedTreatment = _legacyPerformed[0]
         ? treatmentLabels[_legacyPerformed[0] as keyof typeof treatmentLabels]
@@ -301,34 +291,50 @@ export function generateReferralLetter(noteData: NoteData) {
 
       completionSection.push(`  Post-Operative Instructions Given${postOpText ? `: ${postOpText}` : ''}`);
     }
-
-    completionSection.push('');
   }
 
-  // Comments section
   const defaultComments = allTeeth.length > 1
     ? `Please proceed with final restoration for teeth ${toothAreaDisplay}.`
     : `Please proceed with final restoration for Tooth ${toothAreaDisplay}.`;
   const comments = noteData.referralComments || defaultComments;
 
+  return {
+    patientMeta: [
+      `Patient Name: ${noteData.patientName || ''}`,
+      `Patient Chart Number: ${noteData.patientChartNumber || ''}`,
+      `Patient DOB: ${noteData.patientDOB || ''}`,
+      `Date: ${letterDate}`,
+    ],
+    introParagraph,
+    toothAreaLine: `Tooth/Area: ${toothAreaDisplay}`,
+    consultationLines: consultationSection,
+    completionLines: completionSection,
+    comments,
+    closing:
+      'Thank you for your kind referral and the opportunity to manage this patient, and please do not hesitate to reach out should you have any further questions.',
+  };
+}
+
+export function generateReferralLetter(noteData: NoteData) {
+  const blocks = buildReferralBlocks(noteData);
+  const completionLines = blocks.completionLines.length > 0 ? blocks.completionLines : [];
+
   return [
-    `Patient Name: ${noteData.patientName || ''}`,
-    `Patient Chart Number: ${noteData.patientChartNumber || ''}`,
-    `Patient DOB: ${noteData.patientDOB || ''}`,
-    `Date: ${letterDate}`,
+    ...blocks.patientMeta,
     '',
     'Dear Colleague,',
     '',
-    introParagraph,
+    blocks.introParagraph,
     '',
-    `Tooth/Area: ${toothAreaDisplay}`,
+    blocks.toothAreaLine,
     '',
-    ...consultationSection,
+    ...blocks.consultationLines,
     '',
-    ...completionSection,
+    ...completionLines,
+    ...(completionLines.length > 0 ? [''] : []),
     'Comments:',
-    `  ${comments}`,
+    `  ${blocks.comments}`,
     '',
-    'Thank you for your kind referral and the opportunity to manage this patient, and please do not hesitate to reach out should you have any further questions.',
+    blocks.closing,
   ].join('\n');
 }

@@ -12,6 +12,7 @@ export function ReferralSection() {
     consultationDate: string;
     treatmentCompletionDate: string;
     referralComments: string;
+    referralRadiographs: string[];
   } | null>(null);
   const [showUndo, setShowUndo] = useState(false);
 
@@ -24,6 +25,7 @@ export function ReferralSection() {
       consultationDate: noteData.consultationDate,
       treatmentCompletionDate: noteData.treatmentCompletionDate,
       referralComments: noteData.referralComments,
+      referralRadiographs: noteData.referralRadiographs,
     });
 
     updateField('patientName', '');
@@ -33,6 +35,7 @@ export function ReferralSection() {
     updateField('consultationDate', '');
     updateField('treatmentCompletionDate', '');
     updateField('referralComments', '');
+    updateField('referralRadiographs', []);
     setShowUndo(true);
   };
 
@@ -48,6 +51,7 @@ export function ReferralSection() {
     updateField('consultationDate', clearedState.consultationDate);
     updateField('treatmentCompletionDate', clearedState.treatmentCompletionDate);
     updateField('referralComments', clearedState.referralComments);
+    updateField('referralRadiographs', clearedState.referralRadiographs);
     setShowUndo(false);
   };
 
@@ -130,6 +134,59 @@ export function ReferralSection() {
         multiline
         rows={3}
       />
+
+      <div className="mt-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Radiographs (for referral export)
+        </label>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            if (files.length === 0) return;
+            Promise.all(
+              files.map(
+                (file) =>
+                  new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(String(reader.result || ''));
+                    reader.onerror = () => reject(reader.error);
+                    reader.readAsDataURL(file);
+                  })
+              )
+            )
+              .then((dataUrls) => updateField('referralRadiographs', [...noteData.referralRadiographs, ...dataUrls]))
+              .catch((err) => {
+                console.error('Failed to load radiographs', err);
+              });
+          }}
+          className="text-xs text-gray-600 dark:text-gray-300"
+        />
+
+        {noteData.referralRadiographs.length > 0 && (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {noteData.referralRadiographs.map((img, idx) => (
+              <div key={`${img}-${idx}`} className="relative border border-gray-200 dark:border-gray-700 rounded-md p-2">
+                <img src={img} alt={`Radiograph ${idx + 1}`} className="w-full h-24 object-contain" />
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateField(
+                      'referralRadiographs',
+                      noteData.referralRadiographs.filter((_, i) => i !== idx)
+                    )
+                  }
+                  className="absolute top-1 right-1 text-xs text-red-600 bg-white dark:bg-gray-800 px-1 rounded"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

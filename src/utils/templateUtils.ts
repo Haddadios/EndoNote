@@ -81,6 +81,7 @@ export const templateScopeFields: Record<Exclude<TemplateScope, 'all'>, (keyof N
     'treatmentPerformed',
     'temporizedWith',
     'referralComments',
+    'referralRadiographs',
   ],
 };
 
