@@ -293,11 +293,13 @@ const buildRadiographTable = async (
   template: ReferralTemplate,
   images: string[],
   slotWidthIn: number,
-  slotHeightIn: number
+  slotHeightIn: number,
+  startIndex = 0,
+  slotCount = template.radiographs.slots
 ) => {
-  if (!template.radiographs.enabled || template.radiographs.slots <= 0) return null;
+  if (!template.radiographs.enabled || slotCount <= 0) return null;
   const columns = Math.max(1, template.radiographs.columns);
-  const rows = Math.ceil(template.radiographs.slots / columns);
+  const rows = Math.ceil(slotCount / columns);
   const cellWidth = inchesToTwips(slotWidthIn);
   const labelHeightIn = 0.25;
   const paddingWidthIn = 0.1;
@@ -319,11 +321,11 @@ const buildRadiographTable = async (
   };
 
   const tableRows: TableRow[] = [];
-  let imageIndex = 0;
+  let imageIndex = startIndex;
   for (let r = 0; r < rows; r += 1) {
     const cells: TableCell[] = [];
     for (let c = 0; c < columns; c += 1) {
-      const isWithinSlot = r * columns + c < template.radiographs.slots;
+      const isWithinSlot = r * columns + c < slotCount;
       let cellChildren: Paragraph[] = [new Paragraph({ text: '' })];
       if (isWithinSlot) {
         const img = images[imageIndex];
@@ -358,7 +360,6 @@ const buildRadiographTable = async (
               spacing: { after: 120 },
             }),
           ];
-          imageIndex += 1;
         } else {
           cellChildren = [
             new Paragraph({
@@ -371,6 +372,7 @@ const buildRadiographTable = async (
             }),
           ];
         }
+        imageIndex += 1;
       }
 
       cells.push(
@@ -546,26 +548,71 @@ export async function buildReferralDocx(noteData: NoteData, template: ReferralTe
     }
 
     const remainingHeightIn = Math.max(0.1, contentHeightIn - usedHeightIn);
-    const rows = Math.ceil(template.radiographs.slots / Math.max(1, template.radiographs.columns));
-    const maxSlotWidthIn = contentWidthIn / Math.max(1, template.radiographs.columns);
+    const columns = Math.max(1, template.radiographs.columns);
+    const imageCount = noteData.referralRadiographs.length;
+    const targetSlots = Math.max(template.radiographs.slots, imageCount);
+    const rows = Math.ceil(targetSlots / columns);
+    const maxSlotWidthIn = contentWidthIn / columns;
     const maxSlotHeightIn = remainingHeightIn / Math.max(1, rows);
+    const baseSlotWidthIn = Math.max(0.1, template.radiographs.slotWidthIn);
+    const baseSlotHeightIn = Math.max(0.1, template.radiographs.slotHeightIn);
     const scale = Math.max(
       1,
       Math.min(
-        maxSlotWidthIn / template.radiographs.slotWidthIn,
-        maxSlotHeightIn / template.radiographs.slotHeightIn
+        maxSlotWidthIn / baseSlotWidthIn,
+        maxSlotHeightIn / baseSlotHeightIn
       )
     );
-    const slotWidthIn = template.radiographs.slotWidthIn * scale;
-    const slotHeightIn = template.radiographs.slotHeightIn * scale;
+    const slotWidthIn = baseSlotWidthIn * scale;
+    const slotHeightIn = baseSlotHeightIn * scale;
+
+    const firstPageRowsFit = Math.max(1, Math.floor(remainingHeightIn / slotHeightIn));
+    const firstPageCapacity = Math.max(1, firstPageRowsFit * columns);
+    const firstPageSlotCount = Math.min(targetSlots, firstPageCapacity);
 
     const table = await buildRadiographTable(
       template,
       noteData.referralRadiographs,
       slotWidthIn,
-      slotHeightIn
+      slotHeightIn,
+      0,
+      firstPageSlotCount
     );
     if (table) children.push(table);
+
+    if (imageCount > firstPageSlotCount) {
+      let renderedImages = firstPageSlotCount;
+      const headingSize = ptToHalfPoints(Math.max(bodySizePt, template.bodyFontSizePt));
+      const additionalPageRowsFit = Math.max(1, Math.floor(Math.max(0.1, contentHeightIn - lineHeightIn * 2) / slotHeightIn));
+      const additionalPageCapacity = Math.max(1, additionalPageRowsFit * columns);
+
+      while (renderedImages < imageCount) {
+        const pageSlotCount = Math.min(additionalPageCapacity, imageCount - renderedImages);
+        children.push(
+          new Paragraph({
+            pageBreakBefore: true,
+            children: [
+              new TextRun({
+                text: renderedImages === firstPageSlotCount ? 'Additional Radiographs' : 'Additional Radiographs (cont.)',
+                bold: true,
+                size: headingSize,
+              }),
+            ],
+          })
+        );
+        pushSpacer();
+        const overflowTable = await buildRadiographTable(
+          template,
+          noteData.referralRadiographs,
+          slotWidthIn,
+          slotHeightIn,
+          renderedImages,
+          pageSlotCount
+        );
+        if (overflowTable) children.push(overflowTable);
+        renderedImages += pageSlotCount;
+      }
+    }
   }
 
   const doc = new Document({

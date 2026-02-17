@@ -3,7 +3,7 @@ import { useNote } from '../../context/NoteContext';
 import { TextInput } from '../common';
 
 export function ReferralSection() {
-  const { noteData, updateField } = useNote();
+  const { noteData, updateField, referralTemplate, updateReferralTemplate } = useNote();
   const [clearedState, setClearedState] = useState<{
     patientName: string;
     patientChartNumber: string;
@@ -160,7 +160,19 @@ export function ReferralSection() {
                       })
                   )
                 )
-                  .then((dataUrls) => updateField('referralRadiographs', [...noteData.referralRadiographs, ...dataUrls]))
+                  .then((dataUrls) => {
+                    const mergedRadiographs = [...noteData.referralRadiographs, ...dataUrls];
+                    updateField('referralRadiographs', mergedRadiographs);
+                    if (mergedRadiographs.length > referralTemplate.radiographs.slots) {
+                      updateReferralTemplate({
+                        ...referralTemplate,
+                        radiographs: {
+                          ...referralTemplate.radiographs,
+                          slots: mergedRadiographs.length,
+                        },
+                      });
+                    }
+                  })
                   .catch((err) => {
                     console.error('Failed to load radiographs', err);
                   });
